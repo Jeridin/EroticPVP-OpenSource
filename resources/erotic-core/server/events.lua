@@ -1,3 +1,6 @@
+core.queue = core.queue or {}
+core.users = core.users or {}
+
 -- Enforce Steam on connect
 AddEventHandler("playerConnecting", function(name, setKickReason, deferrals)
     local src = source
@@ -18,6 +21,8 @@ end)
 -- Handle joining
 AddEventHandler("playerJoining", function()
     local src = source
+    TriggerClientEvent("erotic-core:enablePVP", src)
+    
     core.loadOrCreateUser(src, function(user, err)
         if not user then
             print("[erotic-core] ERROR: " .. tostring(err))
@@ -35,11 +40,15 @@ end)
 AddEventHandler("playerDropped", function(reason)
     local src = source
     core.users[src] = nil
-    for i, queued in ipairs(core.queue) do
-        if queued == src then
-            table.remove(core.queue, i)
-            break
+
+    if core.queue and type(core.queue) == "table" then
+        for i, queued in ipairs(core.queue) do
+            if queued == src then
+                table.remove(core.queue, i)
+                break
+            end
         end
     end
+
     print(("[erotic-core] %s disconnected (%s)"):format(GetPlayerName(src) or "Unknown", reason))
 end)

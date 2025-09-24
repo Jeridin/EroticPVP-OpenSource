@@ -9,6 +9,9 @@ RegisterNetEvent("erotic-core:arenaSpawn", function(bucketId, slot)
     local coords = arenaSpawns[slot] or arenaSpawns[1]
     RequestCollisionAtCoord(coords.x, coords.y, coords.z)
     Wait(1000)
+
+    SetEntityHealth(ped, 200)
+    AddArmourToPed(ped, 100)
     
     SetEntityCoordsNoOffset(ped, coords.x, coords.y, coords.z, false, false, false, true)
     SetEntityHeading(ped, coords.w)
