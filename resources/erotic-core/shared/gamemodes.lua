@@ -9,6 +9,13 @@ core.gamemodeSettings = {
         helmets     = false,
         ragdoll     = false,
         spawningcars= false,
+        world       = {
+            id      = "lobby",
+            type    = "static",
+            bucket  = 0,
+            capacity= nil,
+            name    = "Lobby"
+        }
     },
 
     ffa = {
@@ -25,6 +32,13 @@ core.gamemodeSettings = {
         spawns      = {
             vector4(90.0182, -1966.9272, 20.7473, 142.1477),
             vector4(85.7977, -1949.3544, 20.8465, 93.8788),
+        },
+        world       = {
+            id       = "ffa-main",
+            type     = "static",
+            bucket   = 1000,
+            capacity = 48,
+            name     = "Global FFA"
         }
     },
 
@@ -37,7 +51,13 @@ core.gamemodeSettings = {
         helmets     = false,
         ragdoll     = false,
         spawningcars= false,
-        roundsToWin = 3
+        roundsToWin = 3,
+        world       = {
+            type     = "match",
+            capacity = 2,
+            queue    = true,
+            name     = "1v1 Duel"
+        }
     },
 
     ranked4v4 = {
@@ -64,6 +84,28 @@ core.gamemodeSettings = {
                 vector4(81.7, -1954.0, 20.8, 94.0),
                 vector4(79.7, -1956.0, 20.8, 94.0),
             }
+        },
+        world       = {
+            type     = "match",
+            capacity = 8,
+            queue    = true,
+            name     = "Ranked 4v4"
+        }
+    },
+
+    custom = {
+        blips        = false,
+        respawn      = false,
+        locals       = false,
+        headshots    = true,
+        helmets      = false,
+        ragdoll      = false,
+        spawningcars = false,
+        defaultSpawn = vector4(-1598.15, -3011.45, -78.25, 355.0),
+        world        = {
+            type      = "personal",
+            capacity  = 12,
+            name      = "Personal Arena"
         }
     }
 }

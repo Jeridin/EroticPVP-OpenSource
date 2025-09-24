@@ -7,13 +7,18 @@ author "Jeridin"
 version "1.0.0"
 
 shared_scripts {
-	'shared/*.lua'
+    'shared/*.lua'
 }
 
 client_scripts {
-	'client/*.lua'
+    'client/*.lua'
 }
 
 server_scripts {
-	'server/*.lua'
+    'server/worlds.lua',
+    'server/users.lua',
+    'server/events.lua',
+    'server/queue.lua',
+    'server/matches.lua',
+    'server/ffa.lua'
 }

@@ -1,6 +1,6 @@
-core = core or {}
+core = rawget(_G, "core") or {}
+_G.core = core
 core.matches = core.matches or {}
-core.nextBucket = core.nextBucket or 1
 
 -- Create a match. For duel: players={p1,p2}. For 4v4: players has 8 and we split into A/B.
 function core.createMatch(players, gamemode)
@@ -15,8 +15,16 @@ function core.createMatch(players, gamemode)
         return
     end
 
-    local bucketId = core.nextBucket
-    core.nextBucket = core.nextBucket + 1
+    local bucketId = core.allocateBucket()
+
+    local world = core.registerWorld(bucketId, gamemode, "match", {
+        players = players,
+        metadata = {
+            name = settings.world and settings.world.name or (gamemode .. " Match"),
+            queue = true
+        },
+        capacity = settings.world and settings.world.capacity or #players
+    })
 
     local match = {
         id = bucketId,
@@ -47,6 +55,9 @@ function core.createMatch(players, gamemode)
         SetPlayerRoutingBucket(src, bucketId)
         TriggerClientEvent("erotic-core:setMode", src, gamemode)        -- switch mode
         TriggerClientEvent("erotic-core:applyGameSettings", src, gamemode) -- apply mode settings
+        if world then
+            world.players[src] = true
+        end
     end
 
     -- optional blips per settings
@@ -175,4 +186,41 @@ function core.endMatch(bucketId, winningSide)
         :format(bucketId, tostring(winningSide), match.scores.A, match.scores.B))
 
     core.matches[bucketId] = nil
+    core.unregisterWorld(bucketId)
+end
+
+function core.handleMatchPlayerLeft(src, reason)
+    local bucketId = GetPlayerRoutingBucket(src)
+    local match = core.matches[bucketId]
+    if not match then return end
+
+    local playerName = GetPlayerName(src) or ("Player " .. tostring(src))
+    local side = match.sides[src]
+
+    -- remove from player lists
+    match.alive[src] = nil
+    match.sides[src] = nil
+    for i, p in ipairs(match.players) do
+        if p == src then
+            table.remove(match.players, i)
+            break
+        end
+    end
+
+    local world = core.getWorld(bucketId)
+    if world then
+        world.players[src] = nil
+    end
+
+    local winner = nil
+    if side == "A" then
+        winner = "B"
+    elseif side == "B" then
+        winner = "A"
+    end
+
+    print(("[erotic-core] %s left match %d (%s). Forcing end. Winner: %s")
+        :format(playerName, bucketId, match.gamemode, tostring(winner)))
+
+    core.endMatch(bucketId, winner)
 end

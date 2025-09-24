@@ -1,3 +1,6 @@
+core = rawget(_G, "core") or {}
+_G.core = core
+
 core.users = {}
 
 function core.loadOrCreateUser(src, cb)

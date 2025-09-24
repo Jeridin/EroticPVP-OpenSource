@@ -1,3 +1,6 @@
+core = rawget(_G, "core") or {}
+_G.core = core
+
 core.queues = {
     duel = { size = 2, players = {}, gamemode = "duel" },
     ranked4v4 = { size = 8, players = {}, gamemode = "ranked4v4" }
@@ -9,6 +12,16 @@ function core.addToQueue(src, queueName)
     if not queue then
         TriggerClientEvent("chat:addMessage", src, { args = { "[Arena]", "Queue does not exist." } })
         return
+    end
+
+    if core.isPlayerInMatch(src) then
+        TriggerClientEvent("chat:addMessage", src, { args = { "[Arena]", "You are already in a match." } })
+        return
+    end
+
+    local currentWorld = core.getWorldByPlayer(src)
+    if currentWorld and currentWorld.gamemode ~= "lobby" then
+        core.leaveCurrentWorld(src, "queue")
     end
 
     -- prevent double-queue
