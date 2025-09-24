@@ -17,6 +17,9 @@ function core.spawnPlayer(coords)
     local ped = PlayerPedId()
     local spawnPos = coords or core.spawnCoords
 
+    SetEntityHealth(ped, 200)
+    AddArmourToPed(ped, 100)
+
     RequestCollisionAtCoord(spawnPos.x, spawnPos.y, spawnPos.z)
 
     SetEntityCoordsNoOffset(ped, spawnPos.x, spawnPos.y, spawnPos.z, false, false, false, true)

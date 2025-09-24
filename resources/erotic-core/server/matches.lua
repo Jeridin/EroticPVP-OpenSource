@@ -163,12 +163,10 @@ function core.endMatch(bucketId, winningSide)
     for _, src in ipairs(match.players) do
         if GetPlayerPing(src) > 0 then
             SetPlayerRoutingBucket(src, 0)
-            TriggerClientEvent("erotic-core:disableBlips", src)
             TriggerClientEvent("erotic-core:arenaMatchEnd", src, winningSide, match.scores)
 
             -- reset back to lobby
             TriggerClientEvent("erotic-core:setMode", src, "lobby")
-            TriggerClientEvent("erotic-core:applyGameSettings", src, "lobby")
             TriggerClientEvent("erotic-core:arenaEndToLobby", src)
         end
     end

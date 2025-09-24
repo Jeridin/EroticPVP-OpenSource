@@ -4,10 +4,10 @@ core.gamemodeSettings = {
     lobby = {
         blips       = false,
         respawn     = true,
-        locals      = true,    -- let people see traffic/NPCs in the lobby
-        headshots   = true,
-        helmets     = true,
-        ragdoll     = true,
+        locals      = false,    -- let people see traffic/NPCs in the lobby
+        headshots   = false,
+        helmets     = false,
+        ragdoll     = false,
         spawningcars= false,
     },
 

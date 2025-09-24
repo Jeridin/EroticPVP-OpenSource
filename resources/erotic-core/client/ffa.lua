@@ -24,8 +24,6 @@ RegisterNetEvent("erotic-core:ffaEnter", function(spawns)
 end)
 
 RegisterNetEvent("erotic-core:ffaExit", function()
-    core.currentMode = "lobby"
-    
     inFFA = false
     local ped = PlayerPedId()
     local lobby = vector4(231.15, -1390.96, 30.49, 339.39)

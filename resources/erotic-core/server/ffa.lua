@@ -18,6 +18,8 @@ end, false)
 RegisterCommand("leaveffa", function(src)
     core.ffaPlayers[src] = nil
     SetPlayerRoutingBucket(src, 0)
+    TriggerClientEvent("erotic-core:setMode", src, "lobby")
+
     TriggerClientEvent("erotic-core:ffaExit", src)
 
     -- update blips for the rest

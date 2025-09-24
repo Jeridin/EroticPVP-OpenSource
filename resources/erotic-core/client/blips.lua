@@ -47,17 +47,15 @@ RegisterNetEvent("erotic-core:enableBlips", function(players, interval)
 end)
 
 RegisterNetEvent("erotic-core:disableBlips", function()
+    -- stop any active thread
     blipThreadRunning = false
     trackingPlayers = {}
+
+    -- remove all active blips
+    if activeBlips then
+        for _, blip in pairs(activeBlips) do
+            RemoveBlip(blip)
+        end
+    end
+    activeBlips = {}
 end)
-
-
--- For tracking a user
--- RegisterNetEvent("erotic-core:disableBlips", function()
---     blipThreadRunning = false
---     for _, blip in pairs(activeBlips) do
---         RemoveBlip(blip)
---     end
---     activeBlips = {}
---     trackingPlayers = {}
--- end)

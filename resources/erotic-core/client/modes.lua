@@ -49,5 +49,11 @@ function core.applyGameSettings(mode)
         exports["gamesettings"]:spawningcars(settings.spawningcars, false)
     end
 
+    if settings.blips then
+        -- leave it to your server/match code to call enableBlips
+    else
+        TriggerEvent("erotic-core:disableBlips")
+    end
+
     print("[erotic-core] Applied settings for mode: " .. mode)
 end
