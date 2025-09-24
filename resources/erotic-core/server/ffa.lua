@@ -1,42 +1,51 @@
 core.ffaPlayers = core.ffaPlayers or {}
 
-RegisterCommand("joinffa", function(src)
+-- join FFA event
+RegisterNetEvent("erotic-core:joinFFA", function(src)
     local settings = core.gamemodeSettings.ffa
     if not settings then return end
 
     SetPlayerRoutingBucket(src, settings.bucket)
     core.ffaPlayers[src] = true
 
+    TriggerClientEvent("erotic-core:setMode", src, "ffa")
     TriggerClientEvent("erotic-core:ffaEnter", src, settings.spawns)
 
-    -- update blips for *all* players in FFA
     core.updateFFABlips()
 
     print(("[erotic-core] %s joined FFA"):format(GetPlayerName(src)))
-end, false)
+end)
 
-RegisterCommand("leaveffa", function(src)
+-- leave FFA event
+RegisterNetEvent("erotic-core:leaveFFA", function(src)
     core.ffaPlayers[src] = nil
     SetPlayerRoutingBucket(src, 0)
-    TriggerClientEvent("erotic-core:setMode", src, "lobby")
 
+    TriggerClientEvent("erotic-core:setMode", src, "lobby")
     TriggerClientEvent("erotic-core:ffaExit", src)
 
-    -- update blips for the rest
     core.updateFFABlips()
 
     print(("[erotic-core] %s left FFA"):format(GetPlayerName(src)))
-end, false)
+end)
 
+-- cleanup on disconnect
 AddEventHandler("playerDropped", function()
     core.ffaPlayers[source] = nil
     core.updateFFABlips()
 end)
 
--- helper to rebuild blip lists for all FFA players
+RegisterCommand("joinffa", function(src)
+    TriggerEvent("erotic-core:joinFFA", src)
+end, false)
+
+RegisterCommand("leaveffa", function(src)
+    TriggerEvent("erotic-core:leaveFFA", src)
+end, false)
+
 function core.updateFFABlips()
     local settings = core.gamemodeSettings.ffa
-    if not settings.blips then return end
+    if not settings or not settings.blips then return end
 
     -- collect all current FFA player IDs
     local players = {}
