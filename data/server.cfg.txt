@@ -13,14 +13,14 @@ sets locale "root-AQ"
 
 ## You CAN edit the following:
 sv_enforceGameBuild 3258 #mp2024_01	- Bottom Dollar Bounties
-sv_licenseKey "cfxk_141xzVp0M6WlBJwzqIvbL_1z3ZS9"
+sv_licenseKey "your license "
 sv_maxclients 8
 sv_pureLevel 1
 endpoint_add_tcp "0.0.0.0:30120"
 endpoint_add_udp "0.0.0.0:30120"
-set steam_webApiKey "E748E54C23A1F5C64C7C679326F8D41D"
+set steam_webApiKey "your web api key"
 set resources_useSystemChat true
-set mysql_connection_string "server=localhost;database=erotic;userid=root;password=root"
+set mysql_connection_string "server=localhost;database=db;userid=userid;password=password"
 
 ## These resources will start by default.
 ensure erotic-core
@@ -30,4 +30,4 @@ ensure oxmysql
 ## Add system admins
 add_ace group.admin command allow # allow all commands
 add_ace group.admin command.quit deny # but don't allow quit
-add_principal identifier.fivem:2077512 group.admin #Bimbo.1
+add_principal identifier.fivem:#your fivem group.admin #yourname
