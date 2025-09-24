@@ -1,60 +1,77 @@
 import React, {
+  Context,
   createContext,
   useContext,
   useEffect,
   useState,
-  ReactNode,
 } from "react";
 import { useNuiEvent } from "../hooks/useNuiEvent";
 import { fetchNui } from "../utils/fetchNui";
+import { isEnvBrowser } from "../utils/misc";
 
+const VisibilityCtx = createContext<VisibilityProviderValue | null>(null);
+
+type UIKey = 'visible' | 'playerHud' | 'inventory' | 'crosshair' | 'taskbar' | 'lobbypage';
 interface VisibilityProviderValue {
-  setVisible: (visible: boolean) => void;
-  visible: boolean;
+  state: Record<UIKey, boolean>;
+  setUI: (key: UIKey, value: boolean) => void;
 }
 
-const VisibilityCtx = createContext<VisibilityProviderValue | undefined>(
-  undefined
-);
-
+// This should be mounted at the top level of your application, it is currently set to
+// apply a CSS visibility value. If this is non-performant, this should be customized.
 interface VisibilityProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }
 
-// This should be mounted at the top level of your application.
-// Currently applies a CSS visibility toggle; feel free to extend.
 export const VisibilityProvider = ({ children }: VisibilityProviderProps) => {
-  const [visible, setVisible] = useState(false);
+  const [state, setState] = useState<Record<UIKey, boolean>>({
+    visible: false,
+    playerHud: false,
+    inventory: false,
+    crosshair: false,
+    taskbar: false,
+    lobbypage: false,
+  });
 
-  useNuiEvent<boolean>("setVisible", setVisible);
+  const setUI = (key: UIKey, value: boolean) => {
+    setState((prev) => ({ ...prev, [key]: value }));
+  };
 
-  // Handle pressing escape/backspace
+  useNuiEvent<boolean>("setVisible", (v) => setUI('visible', v));
+  useNuiEvent<boolean>("showPlayerHud", (v) => setUI('playerHud', v));
+  useNuiEvent<boolean>("showInventory", (v) => setUI('inventory', v));
+  useNuiEvent<boolean>("showCrosshair", (v) => setUI('crosshair', v));
+  useNuiEvent<boolean>("showTaskbar", (v) => setUI('taskbar', v));
+  useNuiEvent<boolean>("showLobbyPage", (v) => setUI('lobbypage', v));
+
   useEffect(() => {
-    if (!visible) return;
-
+    if (!state.visible) return;
     const keyHandler = (e: KeyboardEvent) => {
       if (["Backspace", "Escape"].includes(e.code)) {
-        fetchNui("hideFrame");
+        if (!isEnvBrowser()) fetchNui("hideFrame");
+        else setUI('visible', false);
       }
     };
-
     window.addEventListener("keydown", keyHandler);
     return () => window.removeEventListener("keydown", keyHandler);
-  }, [visible]);
+  }, [state.visible]);
 
   return (
-    <VisibilityCtx.Provider value={{ visible, setVisible }}>
-      <div style={{ visibility: visible ? "visible" : "hidden", height: "100%" }}>
+    <VisibilityCtx.Provider value={{ state, setUI }}>
+      <div style={{ visibility: state.visible ? "visible" : "hidden", height: "100%" }}>
         {children}
       </div>
     </VisibilityCtx.Provider>
   );
 };
 
-export const useVisibility = (): VisibilityProviderValue => {
-  const ctx = useContext(VisibilityCtx);
-  if (!ctx) {
-    throw new Error("useVisibility must be used within a VisibilityProvider");
-  }
-  return ctx;
-};
+// To add a new UI element:
+// 1. Add the key to the UIKey type below (e.g., 'myNewElement')
+// 2. Add the key to the initial state in useState
+// 3. Add a useNuiEvent line for the new element (e.g., useNuiEvent<boolean>("showMyNewElement", (v) => setUI('myNewElement', v));)
+// 4. Use state.myNewElement in your components
+
+export const useVisibility = () =>
+  useContext<VisibilityProviderValue>(
+    VisibilityCtx as Context<VisibilityProviderValue>,
+  );
