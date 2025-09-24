@@ -22,7 +22,9 @@ end)
 AddEventHandler("playerJoining", function()
     local src = source
     TriggerClientEvent("erotic-core:enablePVP", src)
-    
+
+    core.registerWorld(0, "lobby", "static", { metadata = { name = "Lobby" } })
+
     core.loadOrCreateUser(src, function(user, err)
         if not user then
             print("[erotic-core] ERROR: " .. tostring(err))
@@ -39,6 +41,7 @@ end)
 -- Clean up on drop
 AddEventHandler("playerDropped", function(reason)
     local src = source
+    local world = core.leaveCurrentWorld(src, "disconnect")
     core.users[src] = nil
 
     if core.queue and type(core.queue) == "table" then
@@ -50,5 +53,58 @@ AddEventHandler("playerDropped", function(reason)
         end
     end
 
+    core.removeFromQueues(src)
+
+    if world and world.type == "match" then
+        core.handleMatchPlayerLeft(src, reason)
+    elseif world and world.type == "personal" then
+        core.handleWorldOwnerLeft(src)
+    end
+
     print(("[erotic-core] %s disconnected (%s)"):format(GetPlayerName(src) or "Unknown", reason))
+end)
+
+RegisterNetEvent("arena:requestJoin", function(mode)
+    local src = source
+    mode = tostring(mode or ""):lower()
+
+    if mode == "" then
+        TriggerClientEvent("chat:addMessage", src, { args = { "[Arena]", "Invalid mode." } })
+        return
+    end
+
+    if mode == "ffa" or mode == "custom" then
+        local ok, result = core.joinGamemode(src, mode)
+        if not ok then
+            TriggerClientEvent("chat:addMessage", src, { args = { "[Arena]", result or "Unable to join." } })
+        else
+            local worldName = (result and result.name) or mode
+            TriggerClientEvent("chat:addMessage", src, { args = { "[Arena]", "Joined " .. worldName .. "." } })
+        end
+        return
+    end
+
+    if mode == "duel" or mode == "ranked4v4" then
+        core.addToQueue(src, mode)
+        return
+    end
+
+    TriggerClientEvent("chat:addMessage", src, { args = { "[Arena]", "Unknown mode " .. mode } })
+end)
+
+RegisterNetEvent("arena:requestLeave", function()
+    local src = source
+
+    if core.isPlayerInMatch(src) then
+        TriggerClientEvent("chat:addMessage", src, { args = { "[Arena]", "Finish the match before leaving." } })
+        return
+    end
+
+    core.removeFromQueues(src)
+    local world = core.leaveCurrentWorld(src, "ui")
+    if world then
+        TriggerClientEvent("chat:addMessage", src, { args = { "[Arena]", "Returned to lobby." } })
+    else
+        TriggerClientEvent("chat:addMessage", src, { args = { "[Arena]", "You are already in the lobby." } })
+    end
 end)

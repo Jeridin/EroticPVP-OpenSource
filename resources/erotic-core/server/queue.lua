@@ -11,6 +11,16 @@ function core.addToQueue(src, queueName)
         return
     end
 
+    if core.isPlayerInMatch(src) then
+        TriggerClientEvent("chat:addMessage", src, { args = { "[Arena]", "You are already in a match." } })
+        return
+    end
+
+    local currentWorld = core.getWorldByPlayer(src)
+    if currentWorld and currentWorld.gamemode ~= "lobby" then
+        core.leaveCurrentWorld(src, "queue")
+    end
+
     -- prevent double-queue
     for _, p in ipairs(queue.players) do
         if p == src then

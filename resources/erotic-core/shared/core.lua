@@ -14,3 +14,15 @@ function core.getAllIdentifiers(src)
     end
     return identifiers
 end
+
+-- Utility: count table entries safely
+function core.tableCount(tbl)
+    if type(tbl) ~= "table" then return 0 end
+
+    local count = 0
+    for _ in pairs(tbl) do
+        count = count + 1
+    end
+
+    return count
+end

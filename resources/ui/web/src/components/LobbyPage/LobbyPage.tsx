@@ -21,8 +21,9 @@ const LobbyPage: React.FC<{ visible: boolean }> = ({ visible }) => {
       <h1 className="lobby-title">Arena Lobby</h1>
       <div className="lobby-buttons">
         <button onClick={() => handleJoin("ffa")}>Join FFA</button>
+        <button onClick={() => handleJoin("custom")}>Personal Arena</button>
         <button onClick={() => handleJoin("duel")}>Join Duel</button>
-        <button onClick={() => handleJoin("ranked4v4")}>Join 4v4</button>
+        <button onClick={() => handleJoin("ranked4v4")}>Join Ranked 4v4</button>
         <button onClick={handleLeave} className="leave-btn">Leave Lobby</button>
       </div>
     </div>
