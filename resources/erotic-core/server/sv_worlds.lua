@@ -10,7 +10,7 @@ core.worlds = {
             name = "Grove Street FFA",
             gamemode = "ffa",
         },
-        settings = { recoil = "pma", headshots = true, helmets = false },
+        settings = { recoil = "pma", headshots = false, helmets = false, blips = true },
         spawns = {
             {x = 88.2693,  y = -1966.1018, z = 20.7474, h = 137.2590},
             {x = 83.8700,  y = -1948.5973, z = 20.7827, h = 46.4097},
@@ -26,11 +26,11 @@ core.worlds = {
             name = "Freemode",
             tags = { "freeplay" },
             gamemode = "freemode",
-            maxPlayers = 1,
+            maxPlayers = 10,
             passwordProtected = true,
             password = "123",
         },
-        settings = { recoil = "envy", headshots = true, helmets = false },
+        settings = { recoil = "envy", headshots = false, helmets = false },
         spawns = {
             {x = 231.0791, y = -1390.8812, z = 30.4998, h = 138.2659} -- 231.0791, -1390.8812, 30.4998, 138.2659
         },
@@ -41,7 +41,6 @@ core.worlds = {
 local maxId = 0
 for id in pairs(core.worlds) do if id > maxId then maxId = id end end
 core.nextWorldId = maxId + 1
-
 
 function core.createWorld(def)
     local id = core.nextWorldId
