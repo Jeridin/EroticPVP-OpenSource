@@ -31,3 +31,19 @@ RegisterNetEvent("erotic-core:applyGameSettings", function(settings, mode)
     print(("[erotic-core] Applied settings for %s"):format(mode))
 end)
 
+function core.teleportAndHeal(s)
+    local ped = PlayerPedId()
+    DoScreenFadeOut(150)
+    while not IsScreenFadedOut() do Wait(0) end
+
+    NetworkResurrectLocalPlayer(s.x, s.y, s.z, s.h or 0.0, true, true, false)
+    RequestCollisionAtCoord(s.x, s.y, s.z)
+    SetEntityCoordsNoOffset(ped, s.x, s.y, s.z, false, false, false, true)
+    SetEntityHeading(ped, s.h or 0.0)
+    ClearPedBloodDamage(ped)
+    ClearPedTasksImmediately(ped)
+    SetEntityHealth(ped, 200)
+    AddArmourToPed(ped, 100)
+
+    DoScreenFadeIn(150)
+end

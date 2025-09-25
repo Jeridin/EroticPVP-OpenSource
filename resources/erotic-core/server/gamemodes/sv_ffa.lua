@@ -12,13 +12,13 @@ end
 
 AddEventHandler("erotic-core:serverJoinedWorld", function(src, worldId)
     local world = core.worlds[worldId]
-    if not world or world.gamemode ~= "ffa" then return end
+    if not world or world.information.gamemode ~= "ffa" then return end
     sendSpawnToPlayer(src, world)
 end)
 
 RegisterNetEvent("erotic-core:requestRespawn", function(worldId)
     local src = source
     local world = core.worlds[worldId]
-    if not world or world.gamemode ~= "ffa" then return end
+    if not world or world.information.gamemode ~= "ffa" then return end
     sendSpawnToPlayer(src, world)
 end)

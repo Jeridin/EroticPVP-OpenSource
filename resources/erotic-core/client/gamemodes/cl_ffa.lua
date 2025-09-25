@@ -1,6 +1,18 @@
 core = core or {}
+core.spawnHandlers = core.spawnHandlers or {}
 
 local wasDead = false
+
+local worldStats = {}  -- [worldId] = {kills=0, deaths=0}
+
+---------------------------------------------------
+-- helper to get current world stat table
+---------------------------------------------------
+local function getStats()
+    if not core.currentWorldId then return {kills=0, deaths=0} end
+    worldStats[core.currentWorldId] = worldStats[core.currentWorldId] or {kills=0, deaths=0}
+    return worldStats[core.currentWorldId]
+end
 
 -- server tells us where to spawn
 RegisterNetEvent("erotic-core:spawnAt", function(spawn)
@@ -18,38 +30,38 @@ end)
 -- keep track of which world/mode we’re in
 RegisterNetEvent("erotic-core:worldJoined", function(world)
     core.currentWorldId = world.id
-    core.currentMode = world.gamemode
+    core.currentMode = world.information.gamemode
     core.currentSpawns = world.spawns or {}
+    local stats = getStats()
+    stats.kills = 0
+    stats.deaths = 0
 end)
 
--- tiny death watcher just for FFA
-CreateThread(function()
-    while true do
-        local ped = PlayerPedId()
-        local dead = IsEntityDead(ped)
-
-        if core.currentMode == "ffa" and dead and not wasDead then
-            -- pick random spawn locally
-            if core.currentSpawns and #core.currentSpawns > 0 then
-                local s = core.currentSpawns[math.random(#core.currentSpawns)]
-                DoScreenFadeOut(150)
-                while not IsScreenFadedOut() do Wait(0) end
-
-                NetworkResurrectLocalPlayer(s.x, s.y, s.z, s.h or 0.0, true, true, false)
-                RequestCollisionAtCoord(s.x, s.y, s.z)
-                SetEntityCoordsNoOffset(ped, s.x, s.y, s.z, false, false, false, true)
-                SetEntityHeading(ped, s.h or 0.0)
-                ClearPedBloodDamage(ped)
-                ClearPedTasksImmediately(ped)
-
-                SetEntityHealth(ped, 200)
-                AddArmourToPed(ped, 100)
-
-                DoScreenFadeIn(150)
-            end
+core.spawnHandlers["ffa"] = {
+    onJoin = function()
+        if core.currentSpawns and #core.currentSpawns > 0 then
+            local stats = getStats()
+            stats.kills = 0
+            stats.deaths = 0
+            core.teleportAndHeal(core.currentSpawns[math.random(#core.currentSpawns)])
         end
+    end,
 
-        wasDead = dead
-        Wait(200)
+    onDeath = function(deathType)
+        local stats = getStats()
+        stats.deaths = stats.deaths + 1
+        print(("[erotic-core] Death (%s). K:%d D:%d"):format(deathType or "unknown", stats.kills, stats.deaths))
+
+        if core.currentSpawns and #core.currentSpawns > 0 then
+            core.teleportAndHeal(core.currentSpawns[math.random(#core.currentSpawns)])
+        end
+    end,
+
+    onPlayerKilled = function(killerServerId, victimServerId)
+        if killerServerId == GetPlayerServerId(PlayerId()) then
+            local stats = getStats()
+            stats.kills = stats.kills + 1
+            print(("[erotic-core] Kill registered. K:%d D:%d"):format(stats.kills, stats.deaths))
+        end
     end
-end)
+}
