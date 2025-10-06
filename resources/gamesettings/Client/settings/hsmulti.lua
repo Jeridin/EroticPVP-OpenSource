@@ -16,7 +16,6 @@ end
 exports("setHsMulti", SetHsMulti)
 exports("getHsMulti", GetHsMulti)
 
-
 local wait = Wait
 local set_ped_suffers_critical_hits = SetPedSuffersCriticalHits
 CreateThread(function()

@@ -40,6 +40,46 @@ HUD = {
   end,
 }
 
+-- Export: Toggle main NUI visibility
+exports('ToggleNui', function(open)
+  HUD.isOpen = open
+  SendNUIMessage({ action = 'setVisible', data = open })
+end)
+
+-- Export: Toggle Player HUD
+exports('TogglePlayerHud', function(visible)
+  local currentState = not HUD.isPlayerHudVisible
+  HUD:TogglePlayerHud(currentState)
+end)
+
+-- Export: Toggle Inventory
+-- exports('ToggleInventory', function(visible)
+--   HUD.isInventoryVisible = visible
+--   SendNUIMessage({ action = 'showInventory', data = visible })
+--   INVENTORY:sendUpdatedSlotsToNUI()
+-- end)
+
+-- Export: Toggle Crosshair
+exports('ToggleCrosshair', function(visible)
+  HUD.isCrosshairVisible = visible
+  SendNUIMessage({ action = 'showCrosshair', data = visible })
+end)
+
+-- Export: Toggle Taskbar
+exports('ToggleTaskbar', function(visible)
+  local currentState = not HUD.isTaskbarVisible
+  HUD:ToggleTaskbar(currentState)
+end)
+
+exports('ToggleLobbyPage', function(currentState)
+  local currentState = not HUD.isLobbyPageVisible
+  HUD:ToggleLobbypage(currentState)
+
+  if currentState then
+    TriggerEvent('erotic-core:lobbyOpened')
+  end
+end)
+
 RegisterCommand('hud', function()
   HUD:ToggleNui(not HUD.isOpen)
 end)
@@ -62,6 +102,7 @@ end)
 RegisterCommand('LobbyPage', function()
   local currentState = not HUD.isLobbyPageVisible
   HUD:ToggleLobbypage(currentState)
+  TriggerEvent('erotic-core:lobbyOpened')
 end)
 
 RegisterCommand('taskbar', function()

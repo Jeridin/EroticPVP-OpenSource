@@ -38,6 +38,68 @@ core.worlds = {
     }
 }
 
+-- Update the worldsUpdate event to send proper player counts
+RegisterNetEvent("erotic-core:requestWorldsData", function()
+    local src = source
+    print(string.format("[erotic-core] Player %d requested worlds data", src))
+    
+    -- Create a sanitized version of worlds with player counts instead of player tables
+    local worldsData = {}
+    for id, world in pairs(core.worlds) do
+        local playerCount = 0
+        for _ in pairs(world.players) do
+            playerCount = playerCount + 1
+        end
+        
+        worldsData[id] = {
+            id = world.id,
+            bucket = world.bucket,
+            information = world.information,
+            settings = world.settings,
+            spawns = world.spawns,
+            playerCount = playerCount  -- Send count instead of player table
+        }
+    end
+    
+    print(string.format("[erotic-core] Sending %d worlds to player %d", #worldsData, src))
+    TriggerClientEvent("erotic-core:worldsUpdate", src, worldsData)
+end)
+
+-- Also update the worldsUpdate trigger in joinWorld and other places
+-- Replace every instance of:
+-- TriggerClientEvent("erotic-core:worldsUpdate", -1, core.worlds)
+-- With a function call:
+
+function core.broadcastWorldsUpdate()
+    local worldsData = {}
+    for id, world in pairs(core.worlds) do
+        local playerCount = 0
+        for _ in pairs(world.players) do
+            playerCount = playerCount + 1
+        end
+        
+        worldsData[id] = {
+            id = world.id,
+            bucket = world.bucket,
+            information = world.information,
+            settings = world.settings,
+            spawns = world.spawns,
+            playerCount = playerCount
+        }
+    end
+    
+    TriggerClientEvent("erotic-core:worldsUpdate", -1, worldsData)
+end
+
+-- Now replace all TriggerClientEvent("erotic-core:worldsUpdate", -1, core.worlds) with:
+-- core.broadcastWorldsUpdate()
+
+function core.getWorldCount()
+    local count = 0
+    for _ in pairs(core.worlds) do count = count + 1 end
+    return count
+end
+
 local maxId = 0
 for id in pairs(core.worlds) do if id > maxId then maxId = id end end
 core.nextWorldId = maxId + 1
@@ -64,57 +126,92 @@ function core.createWorld(def)
 
     core.worlds[id] = world
     print(("[erotic-core] Created world %s (%s) bucket %d"):format(world.information.name, world.information.gamemode, world.bucket))
-    TriggerClientEvent("erotic-core:worldsUpdate", -1, core.worlds)
+    -- TriggerClientEvent("erotic-core:worldsUpdate", -1, core.worlds)
+    core.broadcastWorldsUpdate()
     return world
 end
 
--- join a world by id
-RegisterNetEvent("erotic-core:joinWorld", function(src, id, password)
+-- Updated joinWorld with logging
+RegisterNetEvent("erotic-core:joinWorld", function(id, password)
+    local src = source
+    print(string.format("[erotic-core] Player %d attempting to join world %d", src, id))
+    
     local world = core.worlds[id]
+    
     if not world then
-        TriggerClientEvent("chat:addMessage", src, { args = {"[Arena]", "World does not exist."}})
+        print(string.format("[erotic-core] World %d does not exist", id))
+        TriggerClientEvent("erotic-core:joinResult", src, false, "World does not exist.")
         return
     end
 
-        -- now: check if already in new world (after cleanup just in case)
     if world.players[src] then
-        TriggerClientEvent("chat:addMessage", src, { args = {"[Arena]", "You’re already in this world."}})
+        print(string.format("[erotic-core] Player %d already in world %d", src, id))
+        TriggerClientEvent("erotic-core:joinResult", src, false, "You're already in this world.")
         return
     end
 
-    -- max player check
-    local count = 0 for _ in pairs(world.players) do count = count + 1 end
+    local count = 0 
+    for _ in pairs(world.players) do count = count + 1 end
+    print(string.format("[erotic-core] World %d has %d players", id, count))
+    
     if world.information.maxPlayers and count >= world.information.maxPlayers then
-        TriggerClientEvent("chat:addMessage", src, { args = {"[Arena]", "World is full."}})
+        print(string.format("[erotic-core] World %d is full", id))
+        TriggerClientEvent("erotic-core:joinResult", src, false, "World is full.")
         return
     end
 
-    -- password check
     if world.information.passwordProtected then
+        print(string.format("[erotic-core] World %d requires password", id))
         if not password or password ~= world.information.password then
-            TriggerClientEvent("chat:addMessage", src, { args = {"[Arena]", "Incorrect or missing password."}})
+            print(string.format("[erotic-core] Incorrect password for world %d", id))
+            TriggerClientEvent("erotic-core:joinResult", src, false, "Incorrect password.")
             return
         end
+        print(string.format("[erotic-core] Password correct for world %d", id))
     end
 
-    -- first: remove player from any existing world
+    -- Remove from existing worlds
     for wid, w in pairs(core.worlds) do
         if w.players[src] then
             w.players[src] = nil
-            print(("[erotic-core] %s left world %d"):format(GetPlayerName(src) or "Unknown", wid))
+            print(string.format("[erotic-core] Removed player %d from world %d", src, wid))
         end
     end
 
     SetPlayerRoutingBucket(src, world.bucket)
     world.players[src] = true
 
-    print(("[erotic-core] %s joined world %d (bucket %d)"):format(GetPlayerName(src) or ("Player "..src), world.id, world.bucket))
+    print(string.format("[erotic-core] Player %d joined world %d (bucket %d)", src, world.id, world.bucket))
 
     TriggerClientEvent("erotic-core:applyGameSettings", src, world.settings, world.information.gamemode)
     TriggerClientEvent("erotic-core:worldJoined", src, world)
-    TriggerClientEvent("erotic-core:worldsUpdate", -1, core.worlds)
-
+    -- TriggerClientEvent("erotic-core:worldsUpdate", -1, core.worlds)
+    core.broadcastWorldsUpdate()
+    TriggerClientEvent("erotic-core:joinResult", src, true, "Joined " .. world.information.name)
+    
     TriggerEvent("erotic-core:serverJoinedWorld", src, id)
+end)
+
+-- Add custom world creation from UI
+RegisterNetEvent("erotic-core:createCustomWorld", function(data)
+    local src = source
+    
+    local world = core.createWorld({
+        lobbyinfo = {
+            name = data.name or "Custom World",
+            gamemode = data.gamemode or "ffa",
+            maxPlayers = data.maxPlayers or 10,
+            passwordProtected = data.passwordProtected or false,
+            password = data.password or nil,
+            tags = {"custom"}
+        },
+        settings = {recoil="qb", headshots=true, helmets=false},
+        spawns = {
+            {x = 0.0, y = 0.0, z = 72.0, h = 180.0}
+        }
+    })
+
+    TriggerClientEvent("erotic-core:joinResult", src, true, "Created world: " .. world.information.name)
 end)
 
 -- clean up when a player drops
@@ -124,7 +221,8 @@ AddEventHandler("playerDropped", function()
         if w.players[src] then
             w.players[src] = nil
             print(("[erotic-core] %s left world %d"):format(GetPlayerName(src) or "Unknown", wid))
-            TriggerClientEvent("erotic-core:worldsUpdate", -1, core.worlds)
+            -- TriggerClientEvent("erotic-core:worldsUpdate", -1, core.worlds)
+            core.broadcastWorldsUpdate()
             if next(w.players) == nil and wid > 3 then
                 core.worlds[wid] = nil
                 print(("[erotic-core] Destroyed empty world %d"):format(wid))
