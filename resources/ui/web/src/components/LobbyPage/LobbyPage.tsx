@@ -132,9 +132,37 @@ const LobbyPage: React.FC<{ visible: boolean }> = ({ visible }) => {
 
 const copyArenaId = () => {
   if (!userData?.arena_id) return;
-  navigator.clipboard.writeText(`${userData.arena_id}`); // just the number
-  setCopied(true);
-  setTimeout(() => setCopied(false), 2000);
+  const textToCopy = `${userData.arena_id}`;
+
+  // Try modern API
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(textToCopy)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => fallbackCopy(textToCopy));
+  } else {
+    fallbackCopy(textToCopy);
+  }
+};
+
+const fallbackCopy = (text: string) => {
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.style.position = "fixed";
+  textArea.style.opacity = "0";
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+  try {
+    document.execCommand("copy");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  } catch (err) {
+    console.error("Fallback copy failed:", err);
+  }
+  document.body.removeChild(textArea);
 };
 
 
@@ -249,7 +277,7 @@ const copyArenaId = () => {
         : "No Arena ID"
     }
   >
-    (ARENA-{userData?.arena_id ?? "nil"})
+    ({userData?.arena_id ?? "nil"})
     {userData?.arena_id && (
       <div className="copy-hint">{copied ? "Copied" : "Copy"}</div>
     )}
@@ -446,7 +474,7 @@ const copyArenaId = () => {
             <div className="modal-server-name">Enter player's Arena ID to add them</div>
             <input
               type="text"
-              placeholder="ARENA-XXXX"
+              placeholder="XXXXXX"
               onKeyPress={(e) => {
                 if (e.key === 'Enter') {
                   addFriend((e.target as HTMLInputElement).value);
