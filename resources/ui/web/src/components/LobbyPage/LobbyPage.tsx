@@ -131,13 +131,12 @@ const LobbyPage: React.FC<{ visible: boolean }> = ({ visible }) => {
   };
 
 const copyArenaId = () => {
-  const arenaId = userData?.arena_id
-    ? `ARENA-${userData.arena_id}`
-    : "ARENA-nil";
-  navigator.clipboard.writeText(arenaId);
+  if (!userData?.arena_id) return;
+  navigator.clipboard.writeText(`${userData.arena_id}`); // just the number
   setCopied(true);
   setTimeout(() => setCopied(false), 2000);
 };
+
 
   const addFriend = async (arenaId: string) => {
     try {
@@ -237,13 +236,23 @@ const copyArenaId = () => {
 <span className="player-name">
   {userData?.username ?? "PlayerOne"}{" "}
   <span
-    className="arena-id"
-    onClick={copyArenaId}
-    style={{ cursor: "pointer" }}
-    title={copied ? "Copied!" : "Click to copy Arena ID"}
+    className={`arena-id ${userData?.arena_id ? "clickable" : "disabled"}`}
+    onClick={() => {
+      if (userData?.arena_id) copyArenaId();
+    }}
+    style={{ cursor: userData?.arena_id ? "pointer" : "not-allowed" }}
+    title={
+      userData?.arena_id
+        ? copied
+          ? "Copied!"
+          : "Click to copy Arena ID"
+        : "No Arena ID"
+    }
   >
     (ARENA-{userData?.arena_id ?? "nil"})
-    <div className="copy-hint">{copied ? "Copied" : "Copy"}</div>
+    {userData?.arena_id && (
+      <div className="copy-hint">{copied ? "Copied" : "Copy"}</div>
+    )}
   </span>
 </span>
 
