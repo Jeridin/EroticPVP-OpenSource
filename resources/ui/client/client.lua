@@ -71,12 +71,22 @@ exports('ToggleTaskbar', function(visible)
   HUD:ToggleTaskbar(currentState)
 end)
 
-exports('ToggleLobbyPage', function(currentState)
-  local currentState = not HUD.isLobbyPageVisible
-  HUD:ToggleLobbypage(currentState)
+-- Fixed ToggleLobbyPage export
+exports('ToggleLobbyPage', function(state)
+  -- If no state provided, toggle current state
+  local newState = state
+  if newState == nil then
+    newState = not HUD.isLobbyPageVisible
+  end
+  
+  HUD:ToggleLobbypage(newState)
 
-  if currentState then
+  if newState then
+    -- Opening lobby
     TriggerEvent('erotic-core:lobbyOpened')
+  else
+    -- Closing lobby
+    TriggerEvent('erotic-core:lobbyClosed')
   end
 end)
 
@@ -89,26 +99,11 @@ RegisterCommand('playerhud', function()
   HUD:TogglePlayerHud(currentState)
 end)
 
-RegisterCommand('inventory', function()
-  local currentState = not HUD.isInventoryVisible
-  HUD:ToggleInventory(currentState)
-end)
-
-RegisterCommand('crosshair', function()
-  local currentState = not HUD.isCrosshairVisible
-  HUD:ToggleCrosshair(currentState)
-end)
-
-RegisterCommand('LobbyPage', function()
-  local currentState = not HUD.isLobbyPageVisible
-  HUD:ToggleLobbypage(currentState)
-  TriggerEvent('erotic-core:lobbyOpened')
-end)
-
-RegisterCommand('taskbar', function()
-  local currentState = not HUD.isTaskbarVisible
-  HUD:ToggleTaskbar(currentState)
-end)
+-- RegisterCommand('LobbyPage', function()
+--   local currentState = not HUD.isLobbyPageVisible
+--   HUD:ToggleLobbypage(currentState)
+--   TriggerEvent('erotic-core:lobbyOpened')
+-- end)
 
 -- RegisterNetEvent('Erotic:LoadUser')
 -- AddEventHandler('Erotic:LoadUser', function()

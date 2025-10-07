@@ -33,15 +33,20 @@ function core.spawnPlayer(coords)
     SetPedComponentVariation(ped, 4, 21, 0, 0)
     SetPedComponentVariation(ped, 6, 34, 0, 0)
     SetPedComponentVariation(ped, 11, 15, 0, 0)
-
-    ShutdownLoadingScreen()
-    ShutdownLoadingScreenNui()
 end
 
 -- Default lobby spawn on join
 AddEventHandler("onClientResourceStart", function(resName)
     if GetCurrentResourceName() ~= resName then return end
+    
+    -- Spawn the player
     core.spawnPlayer()
+    
+    -- Wait for spawn to complete, then trigger player loaded
+    Wait(2000)
+    ShutdownLoadingScreenNui()
+    exports['ui']:ToggleLobbyPage(true)
+    ShutdownLoadingScreen()
 end)
 
 -- Enable PVP

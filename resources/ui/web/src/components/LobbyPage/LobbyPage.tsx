@@ -41,15 +41,31 @@ const LobbyPage: React.FC<{ visible: boolean }> = ({ visible }) => {
   const [activeTab, setActiveTab] = useState("HQ");
   const [worlds, setWorlds] = useState<World[]>([]);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [partyMembers, setPartyMembers] = useState<PartyMember[]>([
-    { id: "1", username: "PlayerOne", level: 85, isLeader: true }
-  ]);
+  const [partyMembers, setPartyMembers] = useState<PartyMember[]>([]);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [selectedWorld, setSelectedWorld] = useState<World | null>(null);
   const [password, setPassword] = useState("");
 
-  useNuiEvent<World[]>('setWorlds', setWorlds);
-  useNuiEvent<UserData>('setUserData', setUserData);
+  // Listen for worlds data from Lua (using the correct event name)
+  useNuiEvent<World[]>('setWorldsData', (worldsData) => {
+    console.log('[LobbyPage] Received worlds data:', worldsData);
+    setWorlds(worldsData);
+  });
+  
+  useNuiEvent<UserData>('setUserData', (data) => {
+    setUserData(data);
+    // Automatically make the user the party leader when they join
+    if (partyMembers.length === 0) {
+      setPartyMembers([{
+        id: data.id.toString(),
+        username: data.username,
+        level: data.level,
+        isLeader: true
+      }]);
+    }
+  });
+
+  useNuiEvent<PartyMember[]>('setPartyMembers', setPartyMembers);
 
   useNuiEvent<{success: boolean, message: string}>('joinResult', (data) => {
     if (data.success) {
@@ -221,7 +237,7 @@ const LobbyPage: React.FC<{ visible: boolean }> = ({ visible }) => {
             <div className="servers-view">
               <div className="servers-header">
                 <h2>AVAILABLE SERVERS</h2>
-                <div className="server-count">{worlds.length} ONLINE</div>
+                <div className="server-count">{worlds.length} SERVER{worlds.length !== 1 ? 'S' : ''} | {worlds.reduce((total, world) => total + world.playerCount, 0)} PLAYER{worlds.reduce((total, world) => total + world.playerCount, 0) !== 1 ? 'S' : ''} ONLINE</div>
               </div>
 
               <div className="servers-grid">
