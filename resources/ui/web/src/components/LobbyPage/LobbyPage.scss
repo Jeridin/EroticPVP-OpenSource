@@ -13,12 +13,12 @@ $border-color: rgba(255, 255, 255, 0.15);
   left: 0;
   width: 100vw;
   height: 100vh;
-  // font-family: 'Rajdhani', 'Roboto Condensed', sans-serif;
   color: $text-white;
   text-transform: uppercase;
   letter-spacing: 0.8px;
   overflow: hidden;
   font-size: 14px;
+  user-select: none;
 
   // Background image for all pages except HQ
   &::before {
@@ -34,7 +34,7 @@ $border-color: rgba(255, 255, 255, 0.15);
     background-repeat: repeat-x;
     opacity: 0;
     transition: opacity 0.3s ease;
-    filter: blur(8px);
+    filter: blur(3px);
     z-index: -1;
   }
 
@@ -61,7 +61,7 @@ $border-color: rgba(255, 255, 255, 0.15);
   top: 0;
   left: 0;
   right: 0;
-  height: 60px;
+  height: 80px;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.85) 100%);
   display: flex;
   align-items: center;
@@ -88,7 +88,7 @@ $border-color: rgba(255, 255, 255, 0.15);
     gap: 4px;
 
     .nav-tab {
-      padding: 8px 24px;
+      padding: 12px 28px;
       background: transparent;
       border: none;
       color: $text-gray;
@@ -240,7 +240,7 @@ $border-color: rgba(255, 255, 255, 0.15);
 // Main Content
 .lobby-main {
   position: absolute;
-  top: 60px;
+  top: 80px;
   left: 0;
   right: 0;
   bottom: 0;
@@ -250,155 +250,359 @@ $border-color: rgba(255, 255, 255, 0.15);
 // HQ View Styles
 .hq-view {
   flex: 1;
-  position: relative;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  padding-bottom: 60px;
+  position: relative;
 
-  .hq-squad-display {
-    position: relative;
+  .hq-main-content {
     width: 100%;
-    height: 250px;
+    height: 100%;
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: center;
-
-    .squad-member {
-      position: absolute;
-      bottom: 0;
-      transition: all 0.3s;
-
-      &.empty {
-        opacity: 0.4;
-
-        .member-card {
-          border-style: dashed;
-        }
-
-        .empty-slot {
-          font-size: 40px;
-          color: $text-gray;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          height: 100%;
-        }
-      }
-
-      .member-card {
-        width: 180px;
-        height: 100px;
-        background: rgba(20, 20, 20, 0.95);
-        border: 2px solid rgba(255, 107, 53, 0.3);
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-end;
-        padding: 12px;
-        position: relative;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
-        transition: all 0.3s;
-
-        &::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 2px;
-          background: linear-gradient(90deg, $accent-orange, transparent);
-        }
-
-        .member-info {
-          .member-name {
-            font-size: 14px;
-            font-weight: 700;
-            margin-bottom: 4px;
-            color: $text-white;
-          }
-
-          .member-stats {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-
-            .level {
-              font-size: 12px;
-              color: $accent-orange;
-              font-weight: 700;
-            }
-          }
-        }
-      }
-
-      &:hover .member-card {
-        border-color: $accent-orange;
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
-      }
-    }
+    
+    // Placeholder content styling
+    // This area can be used for character models, featured content, etc.
   }
 }
 
+// HQ Players Sidebar
 .hq-players-sidebar {
-  width: 300px;
-  background: linear-gradient(270deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.75) 100%);
-  padding: 24px 16px;
+  width: 280px;
+  position: absolute;
+  top: 100px;
+  right: 80px;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.7) 100%);
   display: flex;
   flex-direction: column;
-  gap: 16px;
   overflow-y: auto;
-  border-left: 1px solid rgba(255, 107, 53, 0.2);
+  border-top: 4px solid rgba(255, 107, 53, 0.3);
+  border-bottom: 4px solid rgba(255, 107, 53, 0.3);
+  max-height: calc(100vh - 250px);
+  animation: slideInRight 0.5s ease;
 
   .info-panel {
-    background: rgba(20, 20, 20, 0.95);
-    border: 2px solid rgba(255, 107, 53, 0.2);
-    border-right: 4px solid $accent-orange;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
-    transition: all 0.3s;
-
-    &:hover {
-      border-color: rgba(255, 107, 53, 0.5);
-      box-shadow: 0 4px 20px rgba(255, 107, 53, 0.25);
-      transform: translateX(-5px);
-    }
+    position: relative;
+    background: radial-gradient(50% 50% at 50% 50%, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.7) 100%);
+    padding: 12px;
+    transition: all 0.3s ease-in-out;
 
     .panel-header {
-      padding: 12px 16px;
-      background: linear-gradient(90deg, rgba(255, 107, 53, 0.2), transparent);
-      border-bottom: 1px solid rgba(255, 107, 53, 0.3);
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
+      padding: 8px;
+      color: #ff7e05;
+      border-radius: 2px;
+      text-align: center;
+      border-bottom: 2px solid rgba(255, 107, 53, 0.3);
+      font-size: 14px;
+      text-shadow: 0px 0px 3px #ff7e05;
+      letter-spacing: 2px;
+      margin-bottom: 12px;
     }
 
     .panel-content {
-      padding: 16px;
-
-      .profile-stat {
+      .player-header {
         display: flex;
-        justify-content: space-between;
-        padding: 8px 0;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 0;
         border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        font-size: 11px;
-        transition: all 0.2s;
 
-        &:hover {
-          padding-left: 5px;
-          border-bottom-color: rgba(255, 107, 53, 0.3);
+        .player-icon {
+          width: 36px;
+          height: 36px;
+          border-radius: 6px;
+          object-fit: cover;
+          background: #222;
         }
 
-        &:last-child {
-          border-bottom: none;
+        .player-main {
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+
+          .player-name {
+            font-weight: 600;
+              .arena-id:hover{
+    color: #00bfff;
+    transition: color 0.1s ease-in-out;
+  }
+.arena-id {
+  display: inline-flex;
+  flex-direction: column;
+  // align-items: flex-start;
+  font-size: 0.85em;
+  color: #0073ff;
+  opacity: 0.8;
+  margin-left: 4px;
+  transition: color 0.3s ease-in-out;
+
+  .copy-hint {
+    font-size: 0.7em;
+      justify-content: right;
+    color: #797979; // light gray
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+}
+          }
+
+          .player-rank {
+            font-size: 12px;
+            text-transform: uppercase;
+
+            &.rank-copper { color: #b87333; }
+            &.rank-silver { color: #c0c0c0; }
+            &.rank-gold { color: #ffd700; }
+            &.rank-diamond { color: #00bfff; }
+            &.rank-ruby { color: #e0115f; }
+          }
+        }
+      }
+
+      // Friends List Styles
+      .friends-actions {
+        margin-bottom: 12px;
+
+        .add-friend-btn {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 8px;
+          background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(255, 165, 0, 0.2));
+          border: 1px solid rgba(255, 107, 53, 0.4);
+          color: $text-white;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s;
+          letter-spacing: 1px;
+
+          svg {
+            fill: $accent-orange;
+          }
+
+          &:hover {
+            background: linear-gradient(135deg, rgba(255, 107, 53, 0.3), rgba(255, 165, 0, 0.3));
+            border-color: $accent-orange;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+          }
+        }
+      }
+
+      .friends-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 200px;
+        overflow-y: auto;
+
+        .friend-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px;
+          background: rgba(0, 0, 0, 0.3);
+          border: 1px solid rgba(255, 107, 53, 0.15);
+          transition: all 0.2s;
+          position: relative;
+
+          &:hover {
+            background: rgba(255, 107, 53, 0.05);
+            border-color: rgba(255, 107, 53, 0.3);
+            padding-left: 12px;
+          }
+
+          .friend-status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+          }
+
+          &.online {
+            .friend-status-indicator {
+              background: #4caf50;
+              box-shadow: 0 0 6px #4caf50;
+            }
+          }
+
+          &.ingame {
+            .friend-status-indicator {
+              background: $accent-orange;
+              box-shadow: 0 0 6px $accent-orange;
+            }
+          }
+
+          &.offline {
+            .friend-status-indicator {
+              background: #666;
+            }
+          }
+
+          .friend-name {
+            flex: 1;
+            font-size: 12px;
+            font-weight: 600;
+            color: $text-white;
+          }
+
+          .friend-status-text {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+          }
+
+          &.online .friend-status-text {
+            color: #4caf50;
+          }
+
+          &.ingame .friend-status-text {
+            color: $accent-orange;
+          }
+
+          &.offline .friend-status-text {
+            color: #666;
+          }
         }
 
-        span:first-child {
+        .no-friends {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 20px;
           color: $text-gray;
+          text-align: center;
+
+          span {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 4px;
+          }
+
+          .add-friends-hint {
+            font-size: 10px;
+            color: rgba(255, 107, 53, 0.6);
+            font-style: italic;
+          }
+        }
+      }
+
+      // Arena ID Copy Section
+      .arena-id-section {
+        margin: 12px 0;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 107, 53, 0.2);
+        border-radius: 2px;
+        position: relative;
+
+        .arena-id-label {
+          font-size: 10px;
+          color: $text-gray;
+          display: block;
+          margin-bottom: 4px;
         }
 
-        span:last-child {
+        .arena-id-box {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 6px 8px;
+          background: rgba(255, 107, 53, 0.1);
+          border: 1px solid rgba(255, 107, 53, 0.3);
+          cursor: pointer;
+          transition: all 0.2s;
+
+          &:hover {
+            background: rgba(255, 107, 53, 0.2);
+            border-color: $accent-orange;
+            
+            .copy-icon svg {
+              fill: $accent-orange;
+            }
+          }
+
+          .arena-id {
+            font-size: 12px;
+            font-weight: 700;
+            color: $text-white;
+            letter-spacing: 1px;
+          }
+
+          .copy-icon {
+            display: flex;
+            align-items: center;
+            
+            svg {
+              fill: $text-gray;
+              transition: all 0.2s;
+            }
+          }
+        }
+
+        .copied-text {
+          position: absolute;
+          right: 10px;
+          top: -20px;
+          font-size: 10px;
           color: $accent-orange;
           font-weight: 700;
+          animation: fadeInOut 2s ease;
+        }
+      }
+
+      @keyframes fadeInOut {
+        0% { opacity: 0; transform: translateY(5px); }
+        20% { opacity: 1; transform: translateY(0); }
+        80% { opacity: 1; transform: translateY(0); }
+        100% { opacity: 0; transform: translateY(-5px); }
+      }
+
+      .xp-text-box {
+        display: flex;
+        justify-content: flex-end;
+        padding-right: 20px;
+        margin-top: 4px;
+        
+        .xp-text {
+          font-size: 11px;
+          color: #7d7d7d;
+          white-space: nowrap;
+        }
+      }
+
+      .level-progress {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        margin-top: 8px;
+
+        .level-label {
+          font-size: 12px;
+          font-weight: 700;
+          color: #ffffff;
+          white-space: nowrap;
+        }
+
+        .xp-bar-inline {
+          flex: 1;
+          height: 8px;
+          background: rgba(255, 255, 255, 0.3);
+          border-radius: 2px;
+          overflow: hidden;
+          clip-path: polygon(3% 0%, 100% 0%, 97% 100%, 0% 100%);
+
+          .xp-fill-inline {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b35, #bf9f20);
+            transition: width 0.3s ease-in-out;
+            clip-path: polygon(3% 0%, 100% 0%, 97% 100%, 0% 100%);
+          }
         }
       }
 
@@ -406,7 +610,7 @@ $border-color: rgba(255, 255, 255, 0.15);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 8px 0;
+        padding: 10px 0;
         border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         transition: all 0.2s;
 
@@ -421,22 +625,125 @@ $border-color: rgba(255, 255, 255, 0.15);
 
         .member-name {
           font-size: 12px;
-          color: $text-white;
+          color: #ffffff;
         }
 
         .member-level {
           font-size: 10px;
-          color: $accent-orange;
+          color: #ff6b35;
           font-weight: 700;
         }
       }
 
       .empty-party-slots {
-        padding: 8px 0;
+        padding: 12px 0;
         text-align: center;
-        color: $text-gray;
-        font-size: 10px;
+        color: #7d7d7d;
+        font-size: 11px;
         font-style: italic;
+      }
+
+      // Squad display styles
+      .squad-display {
+        display: flex;
+        flex-direction: row;
+        gap: 12px;
+        margin-top: 8px;
+
+        .squad-member-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px;
+          background: rgba(0, 0, 0, 0.4);
+          border: 1px solid rgba(255, 107, 53, 0.2);
+          transition: all 0.3s ease;
+          cursor: default;
+
+          &.empty {
+            opacity: 0.6;
+            border-style: dashed;
+            cursor: pointer;
+
+            &:hover {
+              opacity: 1;
+              background: rgba(255, 107, 53, 0.1);
+              border-color: rgba(255, 107, 53, 0.4);
+
+              .squad-member-avatar svg {
+                fill: $accent-orange;
+                transform: scale(1.1);
+              }
+            }
+          }
+
+          &:not(.empty):hover {
+            background: rgba(255, 107, 53, 0.05);
+            border-color: rgba(255, 107, 53, 0.4);
+            transform: translateX(3px);
+          }
+
+          .squad-member-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: rgba(255, 107, 53, 0.1);
+            border: 2px solid rgba(255, 107, 53, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+
+            &.empty {
+              border-style: dashed;
+              background: transparent;
+
+              svg {
+                fill: $text-gray;
+                transition: all 0.3s ease;
+              }
+            }
+
+            img {
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+            }
+
+            .avatar-placeholder {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              
+              svg {
+                fill: $text-gray;
+              }
+            }
+          }
+
+          .squad-member-info {
+            flex: 1;
+            min-width: 0;
+
+            .squad-member-name {
+              font-size: 13px;
+              font-weight: 700;
+              color: $text-white;
+              margin-bottom: 2px;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
+            .squad-member-level {
+              font-size: 11px;
+              color: $accent-orange;
+              font-weight: 600;
+              text-shadow: 0 0 5px rgba(255, 107, 53, 0.3);
+            }
+          }
+        }
       }
     }
   }
@@ -616,15 +923,6 @@ $border-color: rgba(255, 255, 255, 0.15);
   animation: fadeIn 0.2s ease;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 .join-modal {
   width: 450px;
   background: rgba(20, 20, 20, 0.98);
@@ -633,17 +931,6 @@ $border-color: rgba(255, 255, 255, 0.15);
   position: relative;
   box-shadow: 0 10px 40px rgba(255, 107, 53, 0.6);
   animation: slideUp 0.3s ease;
-
-  @keyframes slideUp {
-    from {
-      transform: translateY(30px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
-  }
 
   &::before {
     content: '';
@@ -732,29 +1019,203 @@ $border-color: rgba(255, 255, 255, 0.15);
   }
 }
 
+// Animations
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 107, 53, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 53, 0);
+  }
+}
+
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-10px); }
   75% { transform: translateX(10px); }
 }
 
+@keyframes shimmer {
+  100% {
+    left: 100%;
+  }
+}
+
 .shake {
   animation: shake 0.3s ease;
 }
 
-// Responsive
+// Loading state for squad members
+.squad-member {
+  &.loading {
+    .member-card {
+      position: relative;
+      overflow: hidden;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 107, 53, 0.2),
+          transparent
+        );
+        animation: shimmer 1.5s infinite;
+      }
+    }
+  }
+}
+
+// Responsive Design
+@media (max-width: 1600px) {
+  .hq-players-sidebar {
+    .squad-display {
+      .squad-member-card {
+        padding: 8px;
+        
+        .squad-member-avatar {
+          width: 45px;
+          height: 45px;
+        }
+      }
+    }
+  }
+}
+
 @media (max-width: 1400px) {
   .hq-players-sidebar {
     width: 260px;
+    right: 40px;
   }
 }
 
 @media (max-width: 1200px) {
   .hq-players-sidebar {
-    display: none;
+    position: relative;
+    top: 0;
+    right: 0;
+    width: 100%;
+    max-width: 600px;
+    margin: 20px auto;
+    animation: slideInUp 0.5s ease;
   }
 
   .hq-view {
     width: 100%;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 768px) {
+  .top-nav {
+    padding: 0 15px;
+    height: 70px;
+    
+    .nav-left .logo {
+      font-size: 18px;
+    }
+    
+    .nav-center {
+      gap: 2px;
+      
+      .nav-tab {
+        padding: 8px 12px;
+        font-size: 10px;
+      }
+    }
+    
+    .nav-right {
+      gap: 8px;
+      
+      .stat-badge {
+        padding: 4px 8px;
+        font-size: 10px;
+      }
+      
+      .party-btn {
+        padding: 6px 10px;
+        font-size: 10px;
+      }
+      
+      .settings-btn {
+        width: 32px;
+        height: 32px;
+      }
+    }
+  }
+  
+  .lobby-main {
+    top: 70px;
+  }
+  
+  .hq-players-sidebar {
+    .squad-display {
+      .squad-member-card {
+        .squad-member-avatar {
+          width: 40px;
+          height: 40px;
+        }
+        
+        .squad-member-info {
+          .squad-member-name {
+            font-size: 12px;
+          }
+          
+          .squad-member-level {
+            font-size: 10px;
+          }
+        }
+      }
+    }
   }
 }
