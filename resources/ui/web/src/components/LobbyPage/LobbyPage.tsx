@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNuiEvent } from "../../hooks/useNuiEvent";
 import { fetchNui } from "../../utils/fetchNui";
 import { debugData } from "../../utils/debugData";
@@ -34,11 +34,24 @@ type UserData = {
 };
 
 type PartyMember = {
-  id: string;
+  id: string; // server sends user.id as string (but we harden anyway)
   username: string;
   level: number;
   isLeader: boolean;
   avatarUrl?: string;
+  rank?: "copper" | "silver" | "gold" | "diamond" | "ruby";
+  tier?: number;
+};
+
+const normalizeId = (v: unknown) => (v === undefined || v === null ? "" : String(v).trim());
+
+const dedupeById = (members: PartyMember[]): PartyMember[] => {
+  const map = new Map<string, PartyMember>();
+  for (const m of members) {
+    const key = normalizeId(m.id);
+    if (!map.has(key)) map.set(key, m);
+  }
+  return Array.from(map.values());
 };
 
 const LobbyPage: React.FC<{ visible: boolean }> = ({ visible }) => {
@@ -49,10 +62,14 @@ const LobbyPage: React.FC<{ visible: boolean }> = ({ visible }) => {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [selectedWorld, setSelectedWorld] = useState<World | null>(null);
   const [password, setPassword] = useState("");
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [friendsList, setFriendsList] = useState<{id: string, username: string, status: 'online' | 'offline' | 'ingame'}[]>([]);
+  const [friendsList, setFriendsList] = useState<
+    { id: string; username: string; status: "online" | "offline" | "ingame" }[]
+  >([]);
   const [showAddFriendModal, setShowAddFriendModal] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const [notifications, setNotifications] = useState<{ id: string; message: string }[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // XP Calculation
   const currentXP = userData?.xp ?? 14600;
@@ -61,12 +78,21 @@ const LobbyPage: React.FC<{ visible: boolean }> = ({ visible }) => {
   const progress = Math.min((currentXP / nextLevelXP) * 100, 100);
 
   useNuiEvent<World[]>("setWorldsData", (worldsData) => {
-    console.log("[LobbyPage] Received worlds data:", worldsData);
     setWorlds(worldsData);
   });
 
+  const sendInvite = async (arenaId: number) => {
+    await fetchNui("inviteToParty", { arenaId });
+  };
+
+  useNuiEvent<{ id: string; message: string }>("partyInvite", (invite) =>
+    setNotifications((prev) => [...prev, invite]),
+  );
+
   useNuiEvent<UserData>("setUserData", (data) => {
     setUserData(data);
+
+    // If we haven't received party members yet, seed with self (display won’t show self anyway)
     if (partyMembers.length === 0) {
       setPartyMembers([
         {
@@ -75,16 +101,19 @@ const LobbyPage: React.FC<{ visible: boolean }> = ({ visible }) => {
           level: data.level,
           isLeader: true,
           avatarUrl: data.avatarUrl,
+          rank: data.rank,
+          tier: data.tier,
         },
       ]);
     }
   });
 
-  useNuiEvent<PartyMember[]>("setPartyMembers", setPartyMembers);
-
-  useNuiEvent<any[]>("setFriendsList", (friends) => {
-    setFriendsList(friends);
+  // Always accept server updates and de-dupe; we’ll filter self safely at render time.
+  useNuiEvent<PartyMember[]>("setPartyMembers", (members) => {
+    setPartyMembers(dedupeById(members || []));
   });
+
+  useNuiEvent<any[]>("setFriendsList", (friends) => setFriendsList(friends));
 
   useNuiEvent<{ success: boolean; message: string }>("joinResult", (data) => {
     if (data.success) {
@@ -98,6 +127,11 @@ const LobbyPage: React.FC<{ visible: boolean }> = ({ visible }) => {
     }
   });
 
+  useNuiEvent<{ id: string }>("removeInvite", (data) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== data.id));
+  });
+
+
   const handleJoinClick = (w: World) => {
     setSelectedWorld(w);
     setShowJoinModal(true);
@@ -108,63 +142,47 @@ const LobbyPage: React.FC<{ visible: boolean }> = ({ visible }) => {
     try {
       await fetchNui("joinWorld", {
         worldId: selectedWorld.id,
-        password: selectedWorld.information.passwordProtected
-          ? password
-          : undefined,
+        password: selectedWorld.information.passwordProtected ? password : undefined,
       });
     } catch (error) {
       console.error("[LobbyPage] Error joining world:", error);
     }
   };
 
-  const handleInviteClick = () => {
-    setShowInviteModal(true);
-  };
+  const copyArenaId = () => {
+    if (!userData?.arena_id) return;
+    const textToCopy = `${userData.arena_id}`;
 
-  const sendInvite = async (playerName: string) => {
-    try {
-      await fetchNui("inviteToParty", { playerName });
-      setShowInviteModal(false);
-    } catch (error) {
-      console.error("[LobbyPage] Error inviting player:", error);
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard
+        .writeText(textToCopy)
+        .then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        })
+        .catch(() => fallbackCopy(textToCopy));
+    } else {
+      fallbackCopy(textToCopy);
     }
   };
 
-const copyArenaId = () => {
-  if (!userData?.arena_id) return;
-  const textToCopy = `${userData.arena_id}`;
-
-  // Try modern API
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(textToCopy)
-      .then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      })
-      .catch(() => fallbackCopy(textToCopy));
-  } else {
-    fallbackCopy(textToCopy);
-  }
-};
-
-const fallbackCopy = (text: string) => {
-  const textArea = document.createElement("textarea");
-  textArea.value = text;
-  textArea.style.position = "fixed";
-  textArea.style.opacity = "0";
-  document.body.appendChild(textArea);
-  textArea.focus();
-  textArea.select();
-  try {
-    document.execCommand("copy");
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  } catch (err) {
-    console.error("Fallback copy failed:", err);
-  }
-  document.body.removeChild(textArea);
-};
-
+  const fallbackCopy = (text: string) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand("copy");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Fallback copy failed:", err);
+    }
+    document.body.removeChild(textArea);
+  };
 
   const addFriend = async (arenaId: string) => {
     try {
@@ -175,6 +193,32 @@ const fallbackCopy = (text: string) => {
     }
   };
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const dropdown = document.querySelector(".notifications-dropdown");
+      const btn = document.querySelector(".notifications-btn");
+      if (dropdown && !dropdown.contains(e.target as Node) && btn && !btn.contains(e.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  // ===== Robust "other members" (never show self) =====
+  const otherMembers = useMemo(() => {
+    // If we don't yet know who we are, show no squad members to avoid showing self.
+    if (!userData) return [];
+
+    const selfId = normalizeId(userData.id);
+    const selfArena = normalizeId(userData.arena_id);
+    const selfSet = new Set([selfId, selfArena]);
+
+    // De-dupe first, then filter out anything that matches our user id or (in case of mismatch) arena id.
+    const clean = dedupeById(partyMembers);
+    return clean.filter((m) => !selfSet.has(normalizeId(m.id)));
+  }, [partyMembers, userData]);
+
   if (!visible) return null;
 
   return (
@@ -183,15 +227,56 @@ const fallbackCopy = (text: string) => {
       <header className="top-nav">
         <div className="nav-left">
           <div className="logo">ARENA</div>
+          <div className="notifications">
+            <button className="notifications-btn" onClick={() => setShowNotifications((prev) => !prev)}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+                <path
+                  fill="currentColor"
+                  d="M12 2a6 6 0 0 0-6 6v5H4a2 2 0 0 0 0 4h16a2 2 0 0 0 0-4h-2V8a6 6 0 0 0-6-6zm0 20a3 3 0 0 0 3-3H9a3 3 0 0 0 3 3z"
+                />
+              </svg>
+
+              {notifications.length > 0 && <span className="badge">{notifications.length}</span>}
+            </button>
+
+            {showNotifications && (
+              <div className="notifications-dropdown">
+                {notifications.length > 0 ? (
+                  notifications.map((note) => (
+                    <div key={note.id} className="notification-item">
+                      {note.message}
+                      <div className="actions">
+                        <button
+                          onClick={async () => {
+                            await fetchNui("acceptInvite", { inviteId: note.id });
+                            setNotifications((prev) => prev.filter((n) => n.id !== note.id));
+                          }}
+                        >
+                          Accept
+                        </button>
+
+                        <button
+                          onClick={async () => {
+                            await fetchNui("declineInvite", { inviteId: note.id });
+                            setNotifications((prev) => prev.filter((n) => n.id !== note.id));
+                          }}
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="notification-empty">No notifications</div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="nav-center">
           {["HQ", "SERVERS", "STATS", "SHOP", "LOADOUT"].map((tab) => (
-            <button
-              key={tab}
-              className={`nav-tab ${activeTab === tab ? "active" : ""}`}
-              onClick={() => setActiveTab(tab)}
-            >
+            <button key={tab} className={`nav-tab ${activeTab === tab ? "active" : ""}`} onClick={() => setActiveTab(tab)}>
               {tab}
             </button>
           ))}
@@ -222,15 +307,22 @@ const fallbackCopy = (text: string) => {
           <button className="party-btn">
             <span className="icon">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3s1.34 3 3 3m-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5S5 6.34 5 8s1.34 3 3 3m0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5m8 0c-.29 0-.62.02-.97.05c1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5"/>
+                <path
+                  fill="currentColor"
+                  d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3s1.34 3 3 3m-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5S5 6.34 5 8s1.34 3 3 3m0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5m8 0c-.29 0-.62.02-.97.05c1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5"
+                />
               </svg>
             </span>
-            PARTY ({partyMembers.length}/4)
+            {/* Count uses full party size (including self). */}
+            PARTY ({dedupeById(partyMembers).length}/4)
           </button>
           <button className="settings-btn" onClick={() => console.log("Settings clicked")}>
             <span className="icon">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M19.14 12.94c.04-.3.06-.61.06-.94c0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6s3.6 1.62 3.6 3.6s-1.62 3.6-3.6 3.6"/>
+                <path
+                  fill="currentColor"
+                  d="M19.14 12.94c.04-.3.06-.61.06-.94c0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6s3.6 1.62 3.6 3.6s-1.62 3.6-3.6 3.6"
+                />
               </svg>
             </span>
           </button>
@@ -243,10 +335,7 @@ const fallbackCopy = (text: string) => {
           <>
             {/* HQ View - Main Display Area */}
             <div className="hq-view">
-              {/* This area can be used for other HQ content like character model, stats, etc. */}
-              <div className="hq-main-content">
-                {/* Placeholder for future content */}
-              </div>
+              <div className="hq-main-content">{/* Placeholder for future content */}</div>
             </div>
 
             {/* Players Info - Right Side */}
@@ -255,34 +344,24 @@ const fallbackCopy = (text: string) => {
                 <div className="panel-header">PROFILE</div>
                 <div className="panel-content">
                   <div className="player-header">
-                    <img
-                      src={userData?.avatarUrl ?? "/icons/player.svg"}
-                      alt="avatar"
-                      className="player-icon"
-                    />
+                    <img src={userData?.avatarUrl ?? "/icons/player.svg"} alt="avatar" className="player-icon" />
                     <div className="player-main">
-<span className="player-name">
-  {userData?.username ?? "PlayerOne"}{" "}
-  <span
-    className={`arena-id ${userData?.arena_id ? "clickable" : "disabled"}`}
-    onClick={() => {
-      if (userData?.arena_id) copyArenaId();
-    }}
-    style={{ cursor: userData?.arena_id ? "pointer" : "not-allowed" }}
-    title={
-      userData?.arena_id
-        ? copied
-          ? "Copied!"
-          : "Click to copy Arena ID"
-        : "No Arena ID"
-    }
-  >
-    ({userData?.arena_id ?? "nil"})
-    {userData?.arena_id && (
-      <div className="copy-hint">{copied ? "Copied" : "Copy"}</div>
-    )}
-  </span>
-</span>
+                      <span className="player-name">
+                        {userData?.username ?? "PlayerOne"}{" "}
+                        <span
+                          className={`arena-id ${userData?.arena_id ? "clickable" : "disabled"}`}
+                          onClick={() => {
+                            if (userData?.arena_id) copyArenaId();
+                          }}
+                          style={{ cursor: userData?.arena_id ? "pointer" : "not-allowed" }}
+                          title={
+                            userData?.arena_id ? (copied ? "Copied!" : "Click to copy Arena ID") : "No Arena ID"
+                          }
+                        >
+                          ({userData?.arena_id ?? "nil"})
+                          {userData?.arena_id && <div className="copy-hint">{copied ? "Copied" : "Copy"}</div>}
+                        </span>
+                      </span>
 
                       <span className={`player-rank rank-${userData?.rank ?? "copper"}`}>
                         {(userData?.rank ?? "copper").toUpperCase()} {userData?.tier ?? 1}
@@ -294,10 +373,7 @@ const fallbackCopy = (text: string) => {
                   <div className="level-progress">
                     <span className="level-label">LVL {currentLevel}</span>
                     <div className="xp-bar-inline">
-                      <div
-                        className="xp-fill-inline"
-                        style={{ width: `${progress}%` }}
-                      ></div>
+                      <div className="xp-fill-inline" style={{ width: `${progress}%` }}></div>
                     </div>
                   </div>
                   <div className="xp-text-box">
@@ -314,7 +390,10 @@ const fallbackCopy = (text: string) => {
                   <div className="friends-actions">
                     <button className="add-friend-btn" onClick={() => setShowAddFriendModal(true)}>
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
-                        <path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4s-4 1.79-4 4s1.79 4 4 4m-9-2V7H4v3H1v2h3v3h2v-3h3v-2m9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4"/>
+                        <path
+                          fill="currentColor"
+                          d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4s-4 1.79-4 4s1.79 4 4 4m-9-2V7H4v3H1v2h3v3h2v-3h3v-2m9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4"
+                        />
                       </svg>
                       ADD FRIEND
                     </button>
@@ -326,9 +405,18 @@ const fallbackCopy = (text: string) => {
                           <div className="friend-status-indicator"></div>
                           <span className="friend-name">{friend.username}</span>
                           <span className="friend-status-text">
-                            {friend.status === 'online' ? 'ONLINE' : 
-                             friend.status === 'ingame' ? 'IN GAME' : 'OFFLINE'}
+                            {friend.status === "online"
+                              ? "ONLINE"
+                              : friend.status === "ingame"
+                              ? "IN GAME"
+                              : "OFFLINE"}
                           </span>
+
+                          {friend.status === "online" && (
+                            <button className="invite-btn" onClick={() => sendInvite(Number(friend.id))}>
+                              INVITE
+                            </button>
+                          )}
                         </div>
                       ))
                     ) : (
@@ -345,8 +433,8 @@ const fallbackCopy = (text: string) => {
                 <div className="panel-header">SQUAD MEMBERS</div>
                 <div className="panel-content">
                   <div className="squad-display">
-                    {/* Show other party members (excluding the leader/current user) */}
-                    {partyMembers.filter(member => !member.isLeader).slice(0, 3).map((member, index) => (
+                    {/* Show only OTHER members (max 3) */}
+                    {otherMembers.slice(0, 3).map((member) => (
                       <div key={member.id} className="squad-member-card">
                         <div className="squad-member-avatar">
                           {member.avatarUrl ? (
@@ -354,34 +442,29 @@ const fallbackCopy = (text: string) => {
                           ) : (
                             <div className="avatar-placeholder">
                               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                                <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4s-4 1.79-4 4s1.79 4 4 4m0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4"/>
+                                <path
+                                  fill="currentColor"
+                                  d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4s-4 1.79-4 4s1.79 4 4 4m0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4"
+                                />
                               </svg>
                             </div>
                           )}
                         </div>
-                        {/* <div className="squad-member-info">
+                        <div className="squad-member-info">
                           <div className="squad-member-name">{member.username}</div>
                           <div className="squad-member-level">LVL {member.level}</div>
-                        </div> */}
+                        </div>
                       </div>
                     ))}
-                    
-                    {/* Show empty slots (3 total slots for squad mates) */}
-                    {[...Array(Math.max(0, 3 - partyMembers.filter(m => !m.isLeader).length))].map((_, index) => (
-                      <div 
-                        key={`empty-${index}`} 
-                        className="squad-member-card empty"
-                        onClick={handleInviteClick}
-                      >
+
+                    {/* Empty slots so there are always 3 visible spaces for others */}
+                    {Array.from({ length: Math.max(0, 3 - otherMembers.length) }).map((_, idx) => (
+                      <div key={`empty-${idx}`} className="squad-member-card empty">
                         <div className="squad-member-avatar empty">
                           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z"/>
+                            <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" />
                           </svg>
                         </div>
-                        {/* <div className="squad-member-info">
-                          <div className="squad-member-name">Empty Slot</div>
-                          <div className="squad-member-level">Click to Invite</div>
-                        </div> */}
                       </div>
                     ))}
                   </div>
@@ -396,7 +479,9 @@ const fallbackCopy = (text: string) => {
               <div className="servers-header">
                 <h2>AVAILABLE SERVERS</h2>
                 <div className="server-count">
-                  {worlds.length} SERVER{worlds.length !== 1 ? "S" : ""} | {worlds.reduce((total, world) => total + world.playerCount, 0)} PLAYER{worlds.reduce((total, world) => total + world.playerCount, 0) !== 1 ? "S" : ""} ONLINE
+                  {worlds.length} SERVER{worlds.length !== 1 ? "S" : ""} |{" "}
+                  {worlds.reduce((total, world) => total + world.playerCount, 0)} PLAYER
+                  {worlds.reduce((total, world) => total + world.playerCount, 0) !== 1 ? "S" : ""} ONLINE
                 </div>
               </div>
 
@@ -408,21 +493,17 @@ const fallbackCopy = (text: string) => {
                   </div>
                 ) : (
                   worlds.map((world) => (
-                    <div
-                      key={world.id}
-                      className="server-card-large"
-                      onClick={() => handleJoinClick(world)}
-                    >
+                    <div key={world.id} className="server-card-large" onClick={() => handleJoinClick(world)}>
                       <div className="server-card-header">
                         <h3>{world.information.name}</h3>
-                        {world.information.passwordProtected && (
-                          <span className="lock-icon">🔒</span>
-                        )}
+                        {world.information.passwordProtected && <span className="lock-icon">🔒</span>}
                       </div>
                       <div className="server-card-body">
                         <div className="server-stat">
                           <span className="label">PLAYERS</span>
-                          <span className="value">{world.playerCount}/{world.information.maxPlayers ?? 100}</span>
+                          <span className="value">
+                            {world.playerCount}/{world.information.maxPlayers ?? 100}
+                          </span>
                         </div>
                         <div className="server-stat">
                           <span className="label">MODE</span>
@@ -459,14 +540,18 @@ const fallbackCopy = (text: string) => {
               />
             )}
             <div className="modal-actions">
-              <button className="btn-primary" onClick={confirmJoin}>CONNECT</button>
-              <button className="btn-secondary" onClick={() => setShowJoinModal(false)}>CANCEL</button>
+              <button className="btn-primary" onClick={confirmJoin}>
+                CONNECT
+              </button>
+              <button className="btn-secondary" onClick={() => setShowJoinModal(false)}>
+                CANCEL
+              </button>
             </div>
           </div>
         </div>
       )}
 
-            {/* Add Friend Modal */}
+      {/* Add Friend Modal */}
       {showAddFriendModal && (
         <div className="modal-overlay" onClick={() => setShowAddFriendModal(false)}>
           <div className="join-modal add-friend-modal" onClick={(e) => e.stopPropagation()}>
@@ -476,59 +561,25 @@ const fallbackCopy = (text: string) => {
               type="text"
               placeholder="XXXXXX"
               onKeyPress={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === "Enter") {
                   addFriend((e.target as HTMLInputElement).value);
                 }
               }}
               autoFocus
             />
             <div className="modal-actions">
-              <button 
-                className="btn-primary" 
+              <button
+                className="btn-primary"
                 onClick={(e) => {
                   const input = e.currentTarget.parentElement?.previousElementSibling as HTMLInputElement;
-                  if (input?.value) {
-                    addFriend(input.value);
-                  }
+                  if (input?.value) addFriend(input.value);
                 }}
               >
                 ADD FRIEND
               </button>
-              <button className="btn-secondary" onClick={() => setShowAddFriendModal(false)}>CANCEL</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Invite Modal */}
-      {showInviteModal && (
-        <div className="modal-overlay" onClick={() => setShowInviteModal(false)}>
-          <div className="join-modal invite-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>INVITE PLAYER</h3>
-            <div className="modal-server-name">Send party invite to player</div>
-            <input
-              type="text"
-              placeholder="ENTER PLAYER NAME"
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  sendInvite((e.target as HTMLInputElement).value);
-                }
-              }}
-              autoFocus
-            />
-            <div className="modal-actions">
-              <button 
-                className="btn-primary" 
-                onClick={(e) => {
-                  const input = e.currentTarget.parentElement?.previousElementSibling as HTMLInputElement;
-                  if (input?.value) {
-                    sendInvite(input.value);
-                  }
-                }}
-              >
-                SEND INVITE
+              <button className="btn-secondary" onClick={() => setShowAddFriendModal(false)}>
+                CANCEL
               </button>
-              <button className="btn-secondary" onClick={() => setShowInviteModal(false)}>CANCEL</button>
             </div>
           </div>
         </div>
