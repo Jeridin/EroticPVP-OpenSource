@@ -1,3 +1,4 @@
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/290db11b-45a9-4218-bd71-fcbfebd2a44e" />
 
 # Erotic Core — Arena Framework
 
@@ -80,6 +81,9 @@ resources/
 | `/createworld`      | Create a quick custom world (for testing/development).     |
 
 ---
+<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/253d0118-69ca-40a5-84bf-91db352dd689" />
+![Uploading image.png…]()
+
 
 ## 🧩 Extending the Framework
 
