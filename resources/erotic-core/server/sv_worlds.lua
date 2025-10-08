@@ -1,7 +1,8 @@
--- sv_worlds.lua
 core = core or {}
 
--- define preset / static worlds
+local lobbyBuckets = {}
+local LOBBY_BUCKET_START = 100000
+
 core.worlds = {
     [1] = {
         id = 1,
@@ -38,12 +39,62 @@ core.worlds = {
     }
 }
 
--- ========================================
--- LOBBY SYSTEM - ROUTING BUCKET MANAGEMENT
--- ========================================
+function core.broadcastWorldsUpdate()
+    local worldsData = {}
+    for id, world in pairs(core.worlds) do
+        local playerCount = 0
+        for _ in pairs(world.players) do
+            playerCount = playerCount + 1
+        end
+        
+        worldsData[id] = {
+            id = world.id,
+            bucket = world.bucket,
+            information = world.information,
+            settings = world.settings,
+            spawns = world.spawns,
+            playerCount = playerCount
+        }
+    end
+    
+    TriggerClientEvent("erotic-core:worldsUpdate", -1, worldsData)
+end
 
-local lobbyBuckets = {}
-local LOBBY_BUCKET_START = 100000
+function core.getWorldCount()
+    local count = 0
+    for _ in pairs(core.worlds) do count = count + 1 end
+    return count
+end
+
+local maxId = 0
+for id in pairs(core.worlds) do if id > maxId then maxId = id end end
+core.nextWorldId = maxId + 1
+
+function core.createWorld(def)
+    local id = core.nextWorldId
+    core.nextWorldId = id + 1
+
+    local world = {
+        id = id,
+        bucket = id,
+        information = def.lobbyinfo or {
+            name = "World "..id,
+            tags = {},
+            gamemode = def.gamemode or "freemode",
+            maxPlayers = 10,
+            passwordProtected = false,
+            password = nil,
+        },
+        settings = def.settings or {},
+        spawns = def.spawns or {},
+        players = {}
+    }
+
+    core.worlds[id] = world
+    print(("[erotic-core] Created world %s (%s) bucket %d"):format(world.information.name, world.information.gamemode, world.bucket))
+    core.broadcastWorldsUpdate()
+    return world
+end
 
 RegisterNetEvent('erotic-core:setLobbyBucket', function()
     local source = source
@@ -87,36 +138,9 @@ RegisterNetEvent('erotic-core:restoreBucket', function()
     end
 end)
 
--- ========================================
--- WORLDS MANAGEMENT
--- ========================================
-
-function core.broadcastWorldsUpdate()
-    local worldsData = {}
-    for id, world in pairs(core.worlds) do
-        local playerCount = 0
-        for _ in pairs(world.players) do
-            playerCount = playerCount + 1
-        end
-        
-        worldsData[id] = {
-            id = world.id,
-            bucket = world.bucket,
-            information = world.information,
-            settings = world.settings,
-            spawns = world.spawns,
-            playerCount = playerCount
-        }
-    end
-    
-    TriggerClientEvent("erotic-core:worldsUpdate", -1, worldsData)
-end
-
 RegisterNetEvent("erotic-core:requestWorldsData", function()
     local src = source
-    print(string.format("[erotic-core] Player %d requested worlds data", src))
-    
-    -- Create a sanitized version of worlds with player counts instead of player tables
+
     local worldsData = {}
     for id, world in pairs(core.worlds) do
         local playerCount = 0
@@ -133,77 +157,33 @@ RegisterNetEvent("erotic-core:requestWorldsData", function()
             playerCount = playerCount
         }
     end
-    
-    print(string.format("[erotic-core] Sending %d worlds to player %d", #worldsData, src))
+
     TriggerClientEvent("erotic-core:worldsUpdate", src, worldsData)
 end)
 
-function core.getWorldCount()
-    local count = 0
-    for _ in pairs(core.worlds) do count = count + 1 end
-    return count
-end
-
-local maxId = 0
-for id in pairs(core.worlds) do if id > maxId then maxId = id end end
-core.nextWorldId = maxId + 1
-
-function core.createWorld(def)
-    local id = core.nextWorldId
-    core.nextWorldId = id + 1
-
-    local world = {
-        id = id,
-        bucket = id,
-        information = def.lobbyinfo or {
-            name = "World "..id,
-            tags = {},
-            gamemode = def.gamemode or "freemode",
-            maxPlayers = 10,
-            passwordProtected = false,
-            password = nil,
-        },
-        settings = def.settings or {},
-        spawns = def.spawns or {},
-        players = {}
-    }
-
-    core.worlds[id] = world
-    print(("[erotic-core] Created world %s (%s) bucket %d"):format(world.information.name, world.information.gamemode, world.bucket))
-    core.broadcastWorldsUpdate()
-    return world
-end
-
 RegisterNetEvent("erotic-core:joinWorld", function(id, password)
     local src = source
-    print(string.format("[erotic-core] Player %d attempting to join world %d", src, id))
-    
-    -- Clear lobby bucket tracking
+
     if lobbyBuckets[src] then
-        print(string.format("[LobbyPage] Player %d leaving lobby to join world %d", src, id))
         lobbyBuckets[src] = nil
     end
     
     local world = core.worlds[id]
     
     if not world then
-        print(string.format("[erotic-core] World %d does not exist", id))
         TriggerClientEvent("erotic-core:joinResult", src, false, "World does not exist.")
         return
     end
 
     if world.players[src] then
-        print(string.format("[erotic-core] Player %d already in world %d", src, id))
         TriggerClientEvent("erotic-core:joinResult", src, false, "You're already in this world.")
         return
     end
 
     local count = 0 
     for _ in pairs(world.players) do count = count + 1 end
-    print(string.format("[erotic-core] World %d has %d players", id, count))
     
     if world.information.maxPlayers and count >= world.information.maxPlayers then
-        print(string.format("[erotic-core] World %d is full", id))
         TriggerClientEvent("erotic-core:joinResult", src, false, "World is full.")
         return
     end
@@ -211,7 +191,6 @@ RegisterNetEvent("erotic-core:joinWorld", function(id, password)
     if world.information.passwordProtected then
         print(string.format("[erotic-core] World %d requires password", id))
         if not password or password ~= world.information.password then
-            print(string.format("[erotic-core] Incorrect password for world %d", id))
             TriggerClientEvent("erotic-core:joinResult", src, false, "Incorrect password.")
             return
         end
@@ -222,7 +201,6 @@ RegisterNetEvent("erotic-core:joinWorld", function(id, password)
     for wid, w in pairs(core.worlds) do
         if w.players[src] then
             w.players[src] = nil
-            print(string.format("[erotic-core] Removed player %d from world %d", src, wid))
         end
     end
 
@@ -238,27 +216,6 @@ RegisterNetEvent("erotic-core:joinWorld", function(id, password)
     TriggerClientEvent("erotic-core:joinResult", src, true, "Joined " .. world.information.name)
     
     TriggerEvent("erotic-core:serverJoinedWorld", src, id)
-end)
-
-RegisterNetEvent("erotic-core:createCustomWorld", function(data)
-    local src = source
-    
-    local world = core.createWorld({
-        lobbyinfo = {
-            name = data.name or "Custom World",
-            gamemode = data.gamemode or "ffa",
-            maxPlayers = data.maxPlayers or 10,
-            passwordProtected = data.passwordProtected or false,
-            password = data.password or nil,
-            tags = {"custom"}
-        },
-        settings = {recoil="qb", headshots=true, helmets=false},
-        spawns = {
-            {x = 0.0, y = 0.0, z = 72.0, h = 180.0}
-        }
-    })
-
-    TriggerClientEvent("erotic-core:joinResult", src, true, "Created world: " .. world.information.name)
 end)
 
 AddEventHandler("playerDropped", function()
@@ -282,58 +239,5 @@ AddEventHandler("playerDropped", function()
             end
             break
         end
-    end
-end)
-
--- Commands
-RegisterCommand("joinworld", function(src, args)
-    local id = tonumber(args[1])
-    local psw = (args[2])
-    if not id then
-        TriggerClientEvent("chat:addMessage", src, { args = {"[Arena]", "Usage: /joinworld <worldId>"}})
-        return
-    end
-    TriggerEvent("erotic-core:joinWorld", src, id, psw)
-end, false)
-
-RegisterCommand("createworld", function(source, args)
-    local name = args[1] or "Custom World"
-    local gamemode = args[2] or "ffa"
-
-    local world = core.createWorld({
-        lobbyinfo = {
-            name = name,
-            gamemode = gamemode,
-        },
-        settings = {recoil="qb", headshots=true, helmets=false},
-        spawns = {
-            {x = 0.0, y = 0.0, z = 72.0, h = 180.0}
-        }
-    })
-
-    TriggerClientEvent("chat:addMessage", source, { args = {"[Arena]", "Created world ID " .. world.id}})
-end, false)
-
-RegisterCommand("listworlds", function(source)
-    for id, w in pairs(core.worlds) do
-        local playerCount = 0
-        for _ in pairs(w.players) do
-            playerCount = playerCount + 1
-        end
-        TriggerClientEvent("chat:addMessage", source, {
-            args = {
-                "[Arena]",
-                string.format("ID:%d Name:%s Gamemode:%s Players:%d", id, w.information.name, w.information.gamemode, playerCount)
-            }
-        })
-    end
-end, false)
-
--- Add this near the other RegisterNetEvent calls in LobbyPage.lua
-RegisterNetEvent('erotic-core:openLobby', function()
-    if not isInLobby then
-        print("[LobbyPage] Opening lobby")
-        Wait(500)
-        exports["ui"]:ToggleLobbyPage(true)
     end
 end)

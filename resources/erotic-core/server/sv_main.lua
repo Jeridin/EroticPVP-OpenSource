@@ -1,6 +1,5 @@
 core = core or {}
 
--- sv_dev.lua
 RegisterCommand("kill", function(source)
     if source == 0 then
         print("Run this in-game, not from the server console.")
@@ -20,9 +19,9 @@ RegisterNetEvent('erotic-core:playerReady', function()
         
         core.users[src] = userData
         print(("[erotic-core] Loaded user %d - Arena ID: %d"):format(src, userData.arena_id))
-        
-        -- Send user data to client
+
         TriggerClientEvent('erotic-core:setUserData', src, userData)
+        core.sendFriendsList(src, userData.arena_id)
     end)
 end)
 
@@ -32,8 +31,7 @@ AddEventHandler('playerDropped', function()
         print(("[erotic-core] Removing user %d"):format(src))
         core.users[src] = nil
     end
-    
-    -- Also clean up from worlds (existing code)
+
     for wid, w in pairs(core.worlds) do
         if w.players[src] then
             w.players[src] = nil

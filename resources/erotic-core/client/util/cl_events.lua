@@ -1,11 +1,3 @@
--- cl_events.lua
-core = core or {}
-
--- receive user info from server
-RegisterNetEvent("erotic-core:loadUser", function(userData)
-    core.user = userData
-    print(("[erotic-core] Welcome %s! Arena ID: %s"):format(userData.username, userData.arena_id))
-end)
 
 core = core or {}
 
@@ -18,6 +10,11 @@ local settingsActions = {
     spawningcars = function(v) exports["gamesettings"]:spawningcars(v, false) end,
     blips = function(v) if not v then TriggerEvent("erotic-core:disableBlips") end end
 }
+
+RegisterNetEvent("erotic-core:loadUser", function(userData)
+    core.user = userData
+    print(("[erotic-core] Welcome %s! Arena ID: %s"):format(userData.username, userData.arena_id))
+end)
 
 RegisterNetEvent("erotic-core:applyGameSettings", function(settings, mode)
     core.currentMode = mode

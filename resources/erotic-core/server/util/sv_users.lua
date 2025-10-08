@@ -1,6 +1,7 @@
-core.users = {}
+core = core or {}
+core.users = core.users or {}
+core.queue = core.queue or {}
 
--- generate a truly unique 6-digit id
 function core.generateArenaId(cb)
     local function try()
         local id = math.random(100000, 999999)
@@ -8,14 +9,13 @@ function core.generateArenaId(cb)
             if #rows == 0 then
                 cb(id)
             else
-                try() -- unlucky collision, try again
+                try()
             end
         end)
     end
     try()
 end
 
--- Get all identifiers for a player
 function core.getAllIdentifiers(src)
     local identifiers = {}
     for _, v in ipairs(GetPlayerIdentifiers(src)) do
@@ -64,3 +64,74 @@ function core.loadOrCreateUser(src, cb)
         end
     end)
 end
+
+AddEventHandler("playerConnecting", function(name, setKickReason, deferrals)
+    local src = source
+    deferrals.defer()
+    Wait(0)
+    deferrals.update("Checking identifiers...")
+
+    local ids = core.getAllIdentifiers(src)
+    if not ids.steam then
+        deferrals.done("Steam must be running to join this server.")
+        CancelEvent()
+        return
+    end
+
+    deferrals.done()
+end)
+
+AddEventHandler("playerJoining", function()
+    local src = source
+    TriggerClientEvent("erotic-core:enablePVP", src)
+
+    core.loadOrCreateUser(src, function(user, err)
+        if not user then
+            print("[erotic-core] ERROR: " .. tostring(err))
+            DropPlayer(src, "Identifier error")
+            return
+        end
+
+        core.users[src] = user
+        print(("[erotic-core] Loaded user %s (ArenaID: %s)"):format(user.username, user.arena_id))
+
+        TriggerClientEvent("erotic-core:loadUser", src, user)
+        TriggerClientEvent("erotic-core:setUserData", src, user)
+    end)
+end)
+
+AddEventHandler("playerDropped", function(reason)
+    local src = source
+    core.users[src] = nil
+
+    -- remove from queue
+    if core.queue then
+        for i, queued in ipairs(core.queue) do
+            if queued == src then
+                table.remove(core.queue, i)
+                break
+            end
+        end
+    end
+
+    -- clean party membership
+    local pid, party = (function()
+        for partyId, p in pairs(core.parties) do
+            if p.members[src] then return partyId, p end
+        end
+        return nil, nil
+    end)()
+
+    if party then
+        party.members[src] = nil
+        if next(party.members) == nil then
+            print(("[PARTY] Destroyed empty party %d"):format(pid))
+            core.parties[pid] = nil
+        else
+            print(("[PARTY] %s left party %d"):format(src, pid))
+            broadcastParty(party)
+        end
+    end
+
+    print(("[erotic-core] %s disconnected (%s)"):format(GetPlayerName(src) or "Unknown", reason))
+end)

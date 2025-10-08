@@ -1,87 +1,41 @@
--- sv_events.lua
 core = core or {}
-core.queue = core.queue or {}
 core.users = core.users or {}
 core.pendingInvites = core.pendingInvites or {}
 core.parties = core.parties or {}
 
--- =========================
--- CONNECT / LOAD USER FLOW
--- =========================
-AddEventHandler("playerConnecting", function(name, setKickReason, deferrals)
-    local src = source
-    deferrals.defer()
-    Wait(0)
-    deferrals.update("Checking identifiers...")
+function core.sendFriendsList(src, userArenaId)
+    exports.oxmysql:execute("SELECT friends FROM users WHERE arena_id = ?", {userArenaId}, function(rows)
+        if not rows or #rows == 0 then return end
+        local friends = {}
+        if rows[1].friends then
+            friends = json.decode(rows[1].friends) or {}
+        end
 
-    local ids = core.getAllIdentifiers(src)
-    if not ids.steam then
-        deferrals.done("Steam must be running to join this server.")
-        CancelEvent()
-        return
-    end
-
-    deferrals.done()
-end)
-
-AddEventHandler("playerJoining", function()
-    local src = source
-    TriggerClientEvent("erotic-core:enablePVP", src)
-
-    core.loadOrCreateUser(src, function(user, err)
-        if not user then
-            print("[erotic-core] ERROR: " .. tostring(err))
-            DropPlayer(src, "Identifier error")
+        if #friends == 0 then
+            TriggerClientEvent("erotic-core:setFriendsList", src, {})
             return
         end
 
-        core.users[src] = user
-        print(("[erotic-core] Loaded user %s (ArenaID: %s)"):format(user.username, user.arena_id))
+        local placeholders = table.concat({string.rep('?,', #friends):sub(1, -2)})
+        local sql = ("SELECT arena_id, username, level, rank, tier FROM users WHERE arena_id IN (%s)"):format(placeholders)
 
-        TriggerClientEvent("erotic-core:loadUser", src, user)
-        TriggerClientEvent("erotic-core:setUserData", src, user)
-    end)
-end)
-
-AddEventHandler("playerDropped", function(reason)
-    local src = source
-    core.users[src] = nil
-
-    -- remove from queue
-    if core.queue then
-        for i, queued in ipairs(core.queue) do
-            if queued == src then
-                table.remove(core.queue, i)
-                break
+        exports.oxmysql:execute(sql, friends, function(rows2)
+            local list = {}
+            for _, f in ipairs(rows2) do
+                table.insert(list, {
+                    id = f.arena_id,
+                    username = f.username,
+                    level = f.level,
+                    rank = f.rank,
+                    tier = f.tier,
+                    status = "online"
+                })
             end
-        end
-    end
+            TriggerClientEvent("erotic-core:setFriendsList", src, list)
+        end)
+    end)
+end
 
-    -- clean party membership
-    local pid, party = (function()
-        for partyId, p in pairs(core.parties) do
-            if p.members[src] then return partyId, p end
-        end
-        return nil, nil
-    end)()
-
-    if party then
-        party.members[src] = nil
-        if next(party.members) == nil then
-            print(("[PARTY] Destroyed empty party %d"):format(pid))
-            core.parties[pid] = nil
-        else
-            print(("[PARTY] %s left party %d"):format(src, pid))
-            broadcastParty(party)
-        end
-    end
-
-    print(("[erotic-core] %s disconnected (%s)"):format(GetPlayerName(src) or "Unknown", reason))
-end)
-
--- ====================
--- FRIENDS
--- ====================
 RegisterNetEvent("erotic-core:addFriend", function(arenaId)
     local src = source
     local user = core.users[src]
@@ -89,24 +43,33 @@ RegisterNetEvent("erotic-core:addFriend", function(arenaId)
 
     local targetArenaId = tonumber(arenaId)
     if not targetArenaId then return end
+    if targetArenaId == user.arena_id then return end
 
-    if targetArenaId == user.arena_id then
-        TriggerClientEvent("erotic-core:setFriendsList", src, {{
-            id = user.arena_id,
-            username = user.username .. " (You)",
-            status = "online"
-        }})
-        return
-    end
+    -- Fetch current friends JSON
+    exports.oxmysql:execute("SELECT friends FROM users WHERE arena_id = ?", {user.arena_id}, function(rows)
+        if not rows or #rows == 0 then return end
 
-    exports.oxmysql:execute("SELECT arena_id, username, level FROM users WHERE arena_id = ?", {targetArenaId}, function(rows)
-        if #rows == 0 then return end
-        local friend = rows[1]
-        TriggerClientEvent("erotic-core:setFriendsList", src, {{
-            id = friend.arena_id,
-            username = friend.username,
-            status = "online"
-        }})
+        local friends = {}
+        if rows[1].friends then
+            friends = json.decode(rows[1].friends) or {}
+        end
+
+        -- Avoid duplicates
+        for _, f in ipairs(friends) do
+            if f == targetArenaId then
+                return core.sendFriendsList(src, user.arena_id) -- Already added
+            end
+        end
+
+        table.insert(friends, targetArenaId)
+
+        exports.oxmysql:execute(
+            "UPDATE users SET friends = ? WHERE arena_id = ?",
+            {json.encode(friends), user.arena_id},
+            function()
+                core.sendFriendsList(src, user.arena_id)
+            end
+        )
     end)
 end)
 
@@ -165,9 +128,12 @@ function broadcastParty(party)
     end
 
     for src, m in pairs(party.members) do
+        -- existing UI update
         TriggerClientEvent('erotic-core:updateParty', src, memberData)
+
+        -- NEW: tell each member where to stand in the lobby based on their spawnIndex (1..4)
         if m.spawnIndex then
-            TriggerClientEvent('erotic-core:setSpawnIndex', src, m.spawnIndex)
+            TriggerClientEvent('erotic-core:setLobbySpawn', src, m.spawnIndex)
         end
     end
 end

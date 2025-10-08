@@ -1,26 +1,23 @@
--- LobbyPage.lua (Client-side)
 local lobbyCamera = nil
 local isInLobby = false
 local originalPedCoords = nil
 local originalPedHeading = nil
 local loadedInteriorId = nil
 
--- Submarine Lobby Coordinates
 local lobbyCoords = vector3(514.5808, 4834.8682, -63.5)
-local lobbySpawns = {
-    vector3(514.5808, 4834.8682, -63.5), -- Leader
-    vector3(515.8990, 4836.0171, -62.5871), -- Slot 2
-    vector3(512.9387, 4834.8877, -62.5878), -- Slot 3
-    vector3(512.4063, 4836.3706, -62.5878), -- Slot 4
-}
 
+local lobbySpawns = {
+    vector4(514.5808, 4834.8682, -63.5,    359.8080), -- Leader
+    vector4(515.7495, 4835.9990, -62.5874, 28.3401), -- Slot 2
+    vector4(512.8184, 4835.4800, -62.5878, 334.0247),  -- Slot 3
+    vector4(512.1323, 4836.7051, -62.5878, 272.9919), -- Slot 4
+}
 local lobbyHeading = 359.8080
 local lobbyCamCoords = vector3(513.8813, 4840.0156, -62.0)
 local lobbyCamRotation = vector3(-5.0, 0.0, 180.0)
 
 -- Load Doomsday IPLs
 local function LoadDoomsdayIPLs()
-    print("[LobbyPage] Loading Doomsday IPLs...")
     RequestIpl("xm_x17dlc_int_placement")
     RequestIpl("xm_x17dlc_int_placement_interior_0_x17dlc_int_base_ent_milo_")
     RequestIpl("xm_x17dlc_int_placement_interior_1_x17dlc_int_base_loop_milo_")
@@ -30,17 +27,14 @@ local function LoadDoomsdayIPLs()
     RequestIpl("xm_bunkerentrance_door")
     RequestIpl("xm_hatch_closed")
     RequestIpl("xm_hatches_terrain")
-    print("[LobbyPage] IPLs requested")
 end
 
 -- Setup lobby scene
 local function SetupLobbyScene()
-    print("[LobbyPage] Setting up lobby scene")
     local playerPed = PlayerPedId()
 
     originalPedCoords = GetEntityCoords(playerPed)
     originalPedHeading = GetEntityHeading(playerPed)
-    print("[LobbyPage] Stored original position:", originalPedCoords)
 
     TriggerServerEvent('erotic-core:setLobbyBucket')
     Wait(100)
@@ -66,7 +60,6 @@ local function SetupLobbyScene()
         loadedInteriorId = interiorId
         PinInteriorInMemory(interiorId)
         RefreshInterior(interiorId)
-        print("[LobbyPage] Interior loaded, ID:", interiorId)
     else
         print("[LobbyPage] WARNING: Failed to load submarine interior!")
     end
@@ -89,12 +82,10 @@ local function SetupLobbyScene()
     TaskPlayAnim(playerPed, "amb@world_human_stand_impatient@male@no_sign@base", "base", 8.0, 8.0, -1, 1, 0, false, false, false)
 
     DoScreenFadeIn(500)
-    print("[LobbyPage] Lobby scene setup complete")
 end
 
 -- Cleanup
 local function CleanupLobbyScene()
-    print("[LobbyPage] Cleaning up lobby scene")
     isInLobby = false
     local playerPed = PlayerPedId()
 
@@ -128,17 +119,11 @@ local function CleanupLobbyScene()
     SetPlayerControl(PlayerId(), true, 0)
     DisplayRadar(true)
     DoScreenFadeIn(500)
-    print("[LobbyPage] Cleanup complete")
 end
 
 -- =================
 -- NUI Callbacks
 -- =================
-RegisterNUICallback("requestWorlds", function(data, cb)
-    TriggerServerEvent('erotic-core:requestWorldsData')
-    cb({ success = true })
-end)
-
 RegisterNUICallback("joinWorld", function(data, cb)
     print("[LobbyPage] Joining world:", json.encode(data))
     TriggerServerEvent("erotic-core:joinWorld", data.worldId, data.password)
@@ -172,6 +157,29 @@ end)
 -- ==============
 -- Events
 -- ==============
+RegisterNetEvent('erotic-core:setLobbySpawn', function(slot)
+    local playerPed = PlayerPedId()
+    local pos = lobbySpawns[slot]
+    if not pos then return end
+
+    -- Make sure collision & interior are loaded
+    RequestCollisionAtCoord(pos.x, pos.y, pos.z)
+
+    local interior = GetInteriorAtCoords(pos.x, pos.y, pos.z)
+    local timeout = 0
+    while (not HasCollisionLoadedAroundEntity(playerPed) or interior == 0) and timeout < 100 do
+        Wait(50)
+        interior = GetInteriorAtCoords(pos.x, pos.y, pos.z)
+        timeout = timeout + 1
+    end
+
+    SetEntityCoords(playerPed, pos.x, pos.y, pos.z, false, false, false, true)
+    SetEntityHeading(playerPed, pos.w)
+    FreezeEntityPosition(playerPed, true)  -- optional: hold in place
+    Wait(100)
+    FreezeEntityPosition(playerPed, false)
+end)
+
 RegisterNetEvent('erotic-core:lobbyOpened', function()
     if isInLobby then print("[LobbyPage] Already in lobby") return end
     print("[LobbyPage] Lobby opened")
@@ -267,6 +275,3 @@ RegisterNetEvent('erotic-core:lobbyClosed', function()
     CleanupLobbyScene()
     exports["ui"]:ToggleLobbyPage(false)
 end)
-
-
-print("[LobbyPage] Script loaded")
